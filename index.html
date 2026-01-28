@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مُنجِز - تطبيق الإنتاجية الشامل</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts (Cairo) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDKs (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <!-- Confetti JS -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        glass: {
+                            light: 'rgba(255, 255, 255, 0.6)',
+                            dark: 'rgba(15, 23, 42, 0.6)',
+                        },
+                        priority: {
+                            high: '#F87171',
+                            medium: '#FBBF24',
+                            low: '#60A5FA',
+                        }
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                        'pop-in': 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        popIn: {
+                            '0%': { opacity: '0', transform: 'scale(0.9) translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { transition: color 0.3s ease; }
+
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        .dark .glass-panel {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            transition: all 0.3s ease;
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glass-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .dark .glass-card:hover {
+            background: rgba(30, 41, 59, 0.6);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .dark .glass-input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Views Transition */
+        .view-section {
+            transition: all 0.4s ease-in-out;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+        }
+        .view-section.active-view {
+            opacity: 1;
+            pointer-events: all;
+            transform: scale(1);
+            z-index: 10;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.8); }
+
+        /* Priority Styles */
+        .priority-option.selected {
+            transform: scale(1.05);
+            font-weight: bold;
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .priority-option.selected.p-low { background-color: #60A5FA; }
+        .priority-option.selected.p-medium { background-color: #FBBF24; }
+        .priority-option.selected.p-high { background-color: #F87171; }
+
+        /* Tabs */
+        .tab-btn.active {
+            color: #4F46E5;
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .dark .tab-btn.active {
+            color: #818CF8;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Number/Time Input Reset */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=time]::-webkit-calendar-picker-indicator { 
+            cursor: pointer;
+            filter: invert(0.5);
+        }
+        .dark input[type=time]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center py-6 px-4 bg-gradient-to-br from-indigo-300 via-purple-300 to-pink-300 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900 text-gray-800 dark:text-gray-100 overflow-hidden relative selection:bg-indigo-300 selection:text-indigo-900">
+
+    <!-- Background Blobs -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div class="absolute top-0 -left-4 w-72 h-72 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+        <div class="absolute top-0 -right-4 w-72 h-72 bg-yellow-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+        <div class="absolute -bottom-8 left-20 w-72 h-72 bg-pink-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+    </div>
+
+    <!-- Header Section -->
+    <header class="w-full max-w-lg mb-6 flex flex-col items-center justify-center relative z-20">
+        
+        <!-- Right Side Controls (Auth, Creator, Back) -->
+        <div class="absolute right-0 top-1/2 transform -translate-y-1/2 flex items-center gap-2 z-30">
+            <!-- Back Button (Hidden on Home) -->
+            <button id="back-home-btn" onclick="navigateTo('home')" class="hidden w-10 h-10 rounded-full glass-panel flex items-center justify-center text-indigo-600 dark:text-indigo-300 hover:scale-110 transition-transform hover:bg-white/40 shadow-sm">
+                <i class="fas fa-arrow-right"></i>
+            </button>
+
+            <!-- Auth Button (Always Visible) -->
+            <button id="auth-btn" onclick="toggleAuthModal()" class="glass-panel pl-4 pr-2 py-1.5 rounded-full flex items-center gap-2 text-indigo-600 dark:text-indigo-300 hover:bg-white/40 transition-all shadow-sm group">
+                <span class="text-xs font-bold group-hover:text-indigo-800 dark:group-hover:text-white transition-colors" id="auth-text">تسجيل</span>
+                <div id="auth-icon-container" class="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-xs overflow-hidden border border-indigo-200 dark:border-indigo-700">
+                    <i class="fas fa-user-plus" id="auth-icon"></i>
+                    <img id="auth-img" src="" class="w-full h-full object-cover hidden">
+                </div>
+            </button>
+
+            <!-- Creator Info (Hides on Pages) -->
+            <div id="home-actions" class="flex items-center transition-opacity duration-300">
+                <button onclick="toggleCreatorModal()" class="w-10 h-10 rounded-full glass-panel flex items-center justify-center text-indigo-600 dark:text-indigo-300 hover:scale-110 transition-transform hover:bg-white/40 shadow-sm" title="معلومات المطور">
+                    <i class="fas fa-info"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Logo / Title -->
+        <div id="app-logo" class="flex items-center gap-2">
+            <i class="fas fa-layer-group text-indigo-700 dark:text-indigo-300 text-3xl drop-shadow-sm"></i>
+            <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-l from-indigo-600 to-purple-600 dark:from-indigo-300 dark:to-purple-300 drop-shadow-sm flex items-center gap-2">مُنجِز <span class="text-gray-400/50 font-light text-2xl">|</span> <span class="font-sans tracking-tight">Monjez</span></h1>
+        </div>
+
+        <!-- Clock (UPDATED FONT) -->
+        <div class="glass-panel px-6 py-2 rounded-full mt-3 flex items-center gap-3 backdrop-blur-md shadow-sm border-indigo-200/30">
+            <span id="digital-clock" class="text-2xl font-black tracking-wider text-gray-800 dark:text-white" style="font-variant-numeric: tabular-nums;">00:00</span>
+            <span class="w-px h-5 bg-gray-400/50"></span>
+            <span id="current-date-header" class="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">--/--</span>
+        </div>
+
+        <!-- Utility Buttons (Left) -->
+        <div class="absolute left-0 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+            <!-- History Button -->
+            <button onclick="toggleHistory()" class="w-10 h-10 rounded-full glass-panel flex items-center justify-center text-gray-700 dark:text-gray-300 hover:scale-110 transition-transform hover:bg-white/40 dark:hover:bg-slate-700/40 shadow-sm" title="السجل">
+                <i class="fas fa-history"></i>
+            </button>
+            
+            <!-- Fullscreen Button -->
+            <button onclick="toggleFullScreen()" class="w-10 h-10 rounded-full glass-panel flex items-center justify-center text-gray-700 dark:text-gray-300 hover:scale-110 transition-transform hover:bg-white/40 dark:hover:bg-slate-700/40 shadow-sm" title="ملء الشاشة">
+                <i class="fas fa-expand"></i>
+            </button>
+
+            <!-- Theme Toggle -->
+            <button id="theme-toggle" class="w-10 h-10 rounded-full glass-panel flex items-center justify-center text-gray-700 dark:text-yellow-300 hover:scale-110 transition-transform hover:bg-white/40 dark:hover:bg-slate-700/40 shadow-sm">
+                <i class="fas fa-moon dark:hidden"></i>
+                <i class="fas fa-sun hidden dark:block"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="w-full max-w-lg glass-panel rounded-3xl overflow-hidden relative flex flex-col h-[700px] z-10 shadow-2xl border-t border-white/40">
+        
+        <!-- ================= PAGE 1: HOME ================= -->
+        <div id="page-home" class="view-section active-view flex flex-col items-center justify-center p-8 gap-6">
+            
+            <div class="text-center mb-2 animate-pop-in">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">مرحباً بك! 👋</h2>
+                <p class="text-sm text-gray-600 dark:text-gray-300">نظم يومك وحافظ على تركيزك</p>
+            </div>
+
+            <!-- Tasks Entry -->
+            <button onclick="navigateTo('app')" class="glass-card w-full p-5 rounded-2xl flex items-center gap-6 group text-right hover:border-indigo-300 hover:scale-[1.02] active:scale-95 transition-all duration-300 animate-pop-in" style="animation-delay: 0.1s;">
+                <div class="w-14 h-14 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-300 shadow-inner group-hover:scale-110 transition-transform">
+                    <i class="fas fa-tasks text-2xl"></i>
+                </div>
+                <div class="flex-grow">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white">المهام والملاحظات</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">إدارة قوائم المهام وتدوين الأفكار</p>
+                </div>
+                <i class="fas fa-chevron-left text-gray-400 group-hover:-translate-x-1 transition-transform"></i>
+            </button>
+
+            <!-- Timer Entry -->
+            <button onclick="navigateTo('timer')" class="glass-card w-full p-5 rounded-2xl flex items-center gap-6 group text-right hover:border-amber-300 hover:scale-[1.02] active:scale-95 transition-all duration-300 animate-pop-in" style="animation-delay: 0.2s;">
+                <div class="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-300 shadow-inner group-hover:scale-110 transition-transform">
+                    <i class="fas fa-stopwatch text-2xl"></i>
+                </div>
+                <div class="flex-grow">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white">أدوات الوقت</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">مؤقت التركيز والعد التنازلي</p>
+                </div>
+                <i class="fas fa-chevron-left text-gray-400 group-hover:-translate-x-1 transition-transform"></i>
+            </button>
+
+            <div class="mt-auto text-[10px] text-gray-400 opacity-60">الإصدار 3.2</div>
+        </div>
+
+        <!-- ================= PAGE 2: MAIN APP (TASKS & NOTES) ================= -->
+        <div id="page-app" class="view-section flex flex-col h-full">
+            <!-- Tabs -->
+            <div class="flex border-b border-white/20 dark:border-white/10 shrink-0">
+                <button onclick="switchTab('tasks')" id="tab-tasks" class="tab-btn active flex-1 py-4 text-center font-bold text-gray-600 dark:text-gray-400 hover:bg-white/20 dark:hover:bg-white/5 transition-all flex items-center justify-center gap-2 text-sm uppercase">
+                    <i class="fas fa-list-ul"></i> المهام
+                </button>
+                <button onclick="switchTab('notes')" id="tab-notes" class="tab-btn flex-1 py-4 text-center font-bold text-gray-600 dark:text-gray-400 hover:bg-white/20 dark:hover:bg-white/5 transition-all flex items-center justify-center gap-2 text-sm uppercase">
+                    <i class="fas fa-sticky-note"></i> ملاحظات
+                </button>
+            </div>
+
+            <div class="flex-grow overflow-hidden relative">
+                <!-- VIEW 1: TASKS -->
+                <div id="view-tasks" class="h-full flex flex-col absolute inset-0 transition-all duration-500 ease-in-out transform translate-x-0">
+                    <!-- Stats -->
+                    <div class="px-6 pt-4 flex items-center gap-4">
+                        <div class="flex-1 flex justify-between items-center glass-card p-3 rounded-2xl">
+                            <div class="text-center w-1/2 border-l border-gray-300/30 dark:border-gray-500/30 pl-2">
+                                <span class="block text-xl font-bold text-indigo-600 dark:text-indigo-300" id="total-tasks">0</span>
+                                <span class="text-[10px] uppercase text-gray-500">الكل</span>
+                            </div>
+                            <div class="text-center w-1/2 pr-2">
+                                <span class="block text-xl font-bold text-green-600 dark:text-green-300" id="completed-tasks">0</span>
+                                <span class="text-[10px] uppercase text-gray-500">منجز</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Instruction Text -->
+                    <div class="px-6 py-1 text-center">
+                        <p class="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                            <i class="fas fa-mouse-pointer text-xs mx-1"></i> نقرة واحدة للإنجاز <span class="mx-1 text-gray-300">|</span> <i class="fas fa-mouse-pointer text-xs mx-1"></i><i class="fas fa-mouse-pointer text-xs"></i> نقرتان للإلغاء
+                        </p>
+                    </div>
+
+                    <!-- Input -->
+                    <div class="px-6 py-2 flex flex-col gap-2">
+                        <div id="edit-indicator" class="hidden items-center justify-between glass-card px-3 py-1.5 rounded-lg border-indigo-200/50 bg-indigo-50/30">
+                            <span class="text-xs font-bold text-indigo-700 dark:text-indigo-200 flex items-center gap-2"><i class="fas fa-pen"></i> جاري التعديل...</span>
+                            <button onclick="cancelEdit()" class="text-xs font-bold text-red-500 hover:underline">إلغاء</button>
+                        </div>
+                        
+                        <div class="relative group flex gap-2">
+                            <input type="text" id="task-input" class="w-full glass-input text-gray-800 dark:text-white rounded-xl py-2.5 pr-4 pl-4 focus:ring-2 focus:ring-indigo-400/50 focus:outline-none transition-all placeholder-gray-500 dark:placeholder-gray-400 text-sm" placeholder="أضف مهمة جديدة...">
+                            <input type="time" id="task-time" class="glass-input rounded-xl px-2 text-xs w-20 text-center focus:ring-2 focus:ring-indigo-400/50 focus:outline-none text-gray-600 dark:text-gray-300">
+                        </div>
+
+                        <div class="flex gap-2 items-stretch">
+                            <div class="flex-grow glass-card rounded-xl p-1 flex gap-1 h-10">
+                                <button onclick="setPriority('low')" id="p-btn-low" class="priority-option p-low flex-1 rounded-lg flex items-center justify-center gap-1 text-[10px] hover:bg-blue-100/30 dark:hover:bg-blue-900/30"><div class="w-2 h-2 rounded-full bg-blue-400"></div>عادية</button>
+                                <button onclick="setPriority('medium')" id="p-btn-medium" class="priority-option p-medium flex-1 rounded-lg flex items-center justify-center gap-1 text-[10px] hover:bg-amber-100/30 dark:hover:bg-amber-900/30"><div class="w-2 h-2 rounded-full bg-amber-400"></div>وسط</button>
+                                <button onclick="setPriority('high')" id="p-btn-high" class="priority-option p-high flex-1 rounded-lg flex items-center justify-center gap-1 text-[10px] hover:bg-red-100/30 dark:hover:bg-red-900/30"><div class="w-2 h-2 rounded-full bg-red-400"></div>هامة</button>
+                            </div>
+                            <button id="add-btn" class="w-20 bg-indigo-600/90 hover:bg-indigo-700 text-white rounded-xl flex items-center justify-center shadow-lg active:scale-95 text-xs font-bold">
+                                <i id="add-btn-icon" class="fas fa-plus mr-1"></i> <span id="add-btn-text">إضافة</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- List -->
+                    <div class="px-6 pb-2 flex-grow overflow-y-auto">
+                        <div id="empty-state-tasks" class="hidden flex-col items-center justify-center h-full text-center opacity-70">
+                            <div class="w-20 h-20 glass-card rounded-full flex items-center justify-center mb-3 shadow-lg">
+                                <i class="fas fa-clipboard-check text-3xl text-indigo-300"></i>
+                            </div>
+                            <p class="text-xs font-medium text-gray-600 dark:text-gray-300">القائمة فارغة.</p>
+                        </div>
+                        <ul id="task-list" class="space-y-2 pb-16"></ul>
+                    </div>
+                </div>
+
+                <!-- VIEW 2: NOTES LIST -->
+                <div id="view-notes" class="h-full flex flex-col absolute inset-0 transition-all duration-500 ease-in-out transform -translate-x-full opacity-0 pointer-events-none">
+                    <div class="px-6 pt-4 pb-2">
+                        <div class="glass-card rounded-xl p-3">
+                            <input type="text" id="note-title" placeholder="عنوان..." class="w-full bg-transparent text-gray-900 dark:text-white font-bold mb-2 focus:outline-none placeholder-gray-500 text-sm">
+                            <textarea id="note-body" placeholder="اكتب ملاحظتك..." rows="3" class="w-full bg-transparent text-gray-700 dark:text-gray-200 text-xs focus:outline-none resize-none placeholder-gray-500"></textarea>
+                            <div class="flex justify-end mt-2 pt-2 border-t border-gray-200/30 dark:border-gray-700/30">
+                                <button id="add-note-btn" class="bg-indigo-600/90 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-lg shadow-md flex items-center gap-1"><i class="fas fa-save"></i> حفظ</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="px-6 pb-6 flex-grow overflow-y-auto">
+                        <div id="empty-state-notes" class="hidden flex-col items-center justify-center h-full text-center opacity-70">
+                            <i class="far fa-edit text-4xl text-amber-300 mb-2"></i>
+                            <p class="text-xs text-gray-600 dark:text-gray-300">لا توجد ملاحظات.</p>
+                        </div>
+                        <div id="notes-list" class="grid grid-cols-1 gap-2 pb-16"></div>
+                    </div>
+                </div>
+
+                <!-- VIEW 3: NOTE DETAILS (EDITABLE) -->
+                <div id="view-note-detail" class="h-full flex flex-col absolute inset-0 transition-all duration-300 transform scale-95 opacity-0 pointer-events-none bg-white/60 dark:bg-slate-900/90 backdrop-blur-xl z-20">
+                    <div class="p-4 border-b border-white/20 flex items-center justify-between">
+                        <button onclick="closeNoteDetails()" class="text-gray-600 dark:text-gray-300 flex items-center gap-2 text-sm font-bold hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors">
+                            <i class="fas fa-arrow-right"></i> رجوع
+                        </button>
+                        <span class="text-xs text-gray-500 font-mono" id="detail-date"></span>
+                    </div>
+                    
+                    <div class="p-6 overflow-y-auto flex-grow flex flex-col">
+                        <input type="hidden" id="detail-id">
+                        <input type="text" id="detail-title-input" class="text-2xl font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200/50 pb-2 bg-transparent focus:outline-none focus:border-indigo-500 transition-colors w-full" placeholder="عنوان الملاحظة">
+                        <textarea id="detail-body-input" class="text-gray-700 dark:text-gray-200 leading-loose text-lg bg-transparent focus:outline-none w-full flex-grow resize-none" placeholder="محتوى الملاحظة"></textarea>
+                    </div>
+
+                    <!-- Save Icon Button -->
+                    <div class="absolute top-14 left-6">
+                        <button onclick="saveNoteUpdate()" class="w-10 h-10 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-transform active:scale-95">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+            
+             <div class="px-6 py-2 border-t border-white/20 dark:border-white/10 flex justify-between items-center text-[10px] bg-white/10 dark:bg-black/10 backdrop-blur-sm shrink-0">
+                <span class="text-gray-600 dark:text-gray-400 font-medium" id="pending-count">0 متبقي</span>
+                <button id="clear-all" class="text-red-500 hover:underline font-bold">مسح المكتملة</button>
+            </div>
+        </div>
+
+        <!-- ================= PAGE 3: TIMER (SPLIT VIEWS) ================= -->
+        <div id="page-timer" class="view-section flex flex-col">
+            <!-- Timer Tabs -->
+            <div class="flex border-b border-white/20 dark:border-white/10 shrink-0">
+                <button onclick="switchTimerTab('focus')" id="tab-timer-focus" class="tab-btn active flex-1 py-4 font-bold text-gray-600 dark:text-gray-400 text-sm flex items-center justify-center gap-2">
+                    <i class="fas fa-brain"></i> تركيز
+                </button>
+                <button onclick="switchTimerTab('stopwatch')" id="tab-timer-stopwatch" class="tab-btn flex-1 py-4 font-bold text-gray-600 dark:text-gray-400 text-sm flex items-center justify-center gap-2">
+                    <i class="fas fa-stopwatch"></i> ساعة إيقاف
+                </button>
+            </div>
+
+            <!-- Content Area for Timer -->
+            <div class="flex-grow flex flex-col items-center justify-center p-8 gap-6 relative">
+                
+                <!-- Common Display (Shared) -->
+                <div id="timer-common-display" class="relative w-64 h-64 flex items-center justify-center mb-4 transition-all duration-300">
+                    <div class="absolute inset-0 rounded-full glass-card shadow-2xl animate-pulse" id="timer-pulse" style="animation-duration: 2s; animation-play-state: paused;"></div>
+                    <div class="relative z-10 text-center">
+                        <div id="timer-display" class="text-6xl font-mono font-bold text-indigo-600 dark:text-indigo-300 drop-shadow-md">00:00</div>
+                        <div class="text-xs text-gray-500 mt-2 font-bold tracking-widest uppercase" id="timer-label">جاهز للبدء</div>
+                    </div>
+                </div>
+
+                <!-- CONTROLS: FOCUS MODE -->
+                <div id="controls-focus" class="w-full flex flex-col items-center gap-4 transition-all duration-300">
+                    <button id="timer-btn-focus" onclick="toggleTimer()" class="w-20 h-20 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl flex items-center justify-center text-3xl transition-transform hover:scale-105 active:scale-95">
+                        <i class="fas fa-play pl-1"></i>
+                    </button>
+                    <div class="flex flex-wrap justify-center gap-2 mt-2 w-full">
+                        <button onclick="setTimer(25)" class="px-4 py-2 rounded-xl glass-card text-xs font-bold hover:bg-white/50 transition-colors">25 د</button>
+                        <button onclick="setTimer(5)" class="px-4 py-2 rounded-xl glass-card text-xs font-bold hover:bg-white/50 transition-colors">5 د</button>
+                        <div class="relative group">
+                             <input type="number" id="manual-focus-input" placeholder="دقيقة" class="w-16 px-2 py-2 rounded-xl glass-input text-xs text-center focus:outline-none" onchange="setTimer(this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONTROLS: STOPWATCH MODE -->
+                <div id="controls-stopwatch" class="w-full flex flex-col items-center gap-4 hidden opacity-0 transition-all duration-300 absolute top-0 pt-4 h-full bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-20 rounded-3xl">
+                    
+                    <!-- Circular & Digital Clock -->
+                    <div class="relative w-56 h-56 flex items-center justify-center mt-2">
+                        <!-- SVG Circle -->
+                        <svg class="w-full h-full drop-shadow-lg" viewBox="0 0 100 100">
+                            <!-- Static Face -->
+                            <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-200 dark:text-gray-700" />
+                            
+                            <!-- Numbers -->
+                            <text x="50" y="15" text-anchor="middle" font-size="10" font-weight="bold" class="fill-gray-400 dark:fill-gray-500 font-mono">12</text>
+                            <text x="88" y="54" text-anchor="middle" font-size="10" font-weight="bold" class="fill-gray-400 dark:fill-gray-500 font-mono">3</text>
+                            <text x="50" y="93" text-anchor="middle" font-size="10" font-weight="bold" class="fill-gray-400 dark:fill-gray-500 font-mono">6</text>
+                            <text x="12" y="54" text-anchor="middle" font-size="10" font-weight="bold" class="fill-gray-400 dark:fill-gray-500 font-mono">9</text>
+
+                            <!-- Ticks -->
+                            <path d="M50 2 L50 6 M98 50 L94 50 M50 98 L50 94 M2 50 L6 50" stroke="currentColor" stroke-width="2" class="text-gray-300 dark:text-gray-600" />
+
+                            <!-- Dynamic Hand (Rotates) -->
+                            <g id="sw-hand-group" class="origin-center transition-transform duration-75 ease-linear">
+                                <line x1="50" y1="50" x2="50" y2="12" stroke="#6366f1" stroke-width="2" stroke-linecap="round" />
+                                <line x1="50" y1="50" x2="50" y2="65" stroke="#6366f1" stroke-width="2" stroke-linecap="round" opacity="0.3" />
+                                <circle cx="50" cy="50" r="4" class="text-indigo-600 fill-current" />
+                                <circle cx="50" cy="12" r="2" class="text-red-500 fill-current" />
+                            </g>
+                        </svg>
+                        
+                        <!-- Digital Display -->
+                        <div class="absolute top-2/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-end">
+                             <span id="sw-display" class="text-3xl font-mono font-bold text-gray-800 dark:text-white tracking-widest">00:00</span>
+                             <span id="sw-ms" class="text-sm font-mono text-gray-500 mb-1 ml-1">.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Laps List -->
+                    <div class="w-full max-w-xs h-32 overflow-y-auto glass-card rounded-xl p-2 custom-scrollbar border border-white/20" id="sw-laps">
+                        <div class="text-center text-xs text-gray-400 py-2">لا توجد جولات مسجلة</div>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="flex gap-6 items-center mt-auto mb-6">
+                        <!-- Lap Button -->
+                        <button onclick="recordLap()" class="w-14 h-14 rounded-full glass-card text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center transition-all active:scale-95 shadow-md" title="تسجيل جولة">
+                            <i class="fas fa-flag"></i>
+                        </button>
+                        
+                        <!-- Start/Stop Button -->
+                        <button id="sw-btn-toggle" onclick="toggleStopwatch()" class="w-20 h-20 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl flex items-center justify-center text-3xl transition-transform hover:scale-105 active:scale-95 ring-4 ring-indigo-200/30 dark:ring-indigo-900/30">
+                            <i class="fas fa-play pl-1"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Shared Reset -->
+                <button onclick="resetTimer()" class="absolute bottom-4 right-4 z-30 w-12 h-12 rounded-full glass-card text-gray-600 dark:text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center shadow-lg transition-all" title="إعادة تعيين">
+                    <i class="fas fa-undo"></i>
+                </button>
+
+            </div>
+        </div>
+
+        <!-- ================= HISTORY MODAL ================= -->
+        <div id="history-modal" class="absolute inset-0 z-50 bg-white/60 dark:bg-black/60 backdrop-blur-xl flex flex-col opacity-0 pointer-events-none transition-all duration-300 transform scale-95">
+            <div class="p-4 border-b border-white/20 flex items-center justify-between">
+                <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                    <i class="fas fa-history text-indigo-500"></i> سجل النشاطات
+                </h3>
+                <button onclick="toggleHistory()" class="w-8 h-8 rounded-full glass-card flex items-center justify-center text-gray-600 hover:text-red-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="flex-grow overflow-y-auto p-4 custom-scrollbar">
+                <ul id="history-list" class="space-y-3"></ul>
+                <div id="history-empty" class="hidden flex-col items-center justify-center h-full text-center opacity-60">
+                    <i class="fas fa-wind text-4xl text-gray-400 mb-2"></i>
+                    <p class="text-xs text-gray-500">لا يوجد سجل نشاطات بعد</p>
+                </div>
+            </div>
+            <div class="p-4 border-t border-white/20 text-center">
+                 <button onclick="clearHistory()" class="text-xs text-red-500 hover:underline">مسح السجل</button>
+            </div>
+        </div>
+
+        <!-- ================= CREATOR INFO MODAL ================= -->
+        <div id="creator-modal" class="absolute inset-0 z-50 bg-white/60 dark:bg-black/60 backdrop-blur-xl flex flex-col opacity-0 pointer-events-none transition-all duration-300 transform scale-95 items-center justify-center p-6">
+            <div class="glass-card w-full max-w-sm rounded-3xl p-8 relative flex flex-col items-center text-center shadow-2xl border-white/40">
+                <button onclick="toggleCreatorModal()" class="absolute top-4 left-4 w-8 h-8 rounded-full bg-gray-100/50 dark:bg-slate-700/50 flex items-center justify-center text-gray-500 hover:text-red-500 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+                
+                <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white text-4xl shadow-xl mb-4">
+                    <i class="fas fa-laptop-code"></i>
+                </div>
+                
+                <h2 class="text-3xl font-black text-gray-800 dark:text-white mb-1">3ASM</h2>
+                <span class="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 rounded-full text-[10px] font-bold tracking-wide uppercase mb-4">مطور التطبيق</span>
+                
+                <div class="w-12 h-1 bg-indigo-500/20 rounded-full mb-4"></div>
+                
+                <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
+                    تم تطوير هذا التطبيق لمساعدتك على تنظيم يومك وزيادة إنتاجيتك بأسلوب عصري وبسيط.
+                </p>
+                
+                <div class="w-full mt-6">
+                    <a href="https://instagram.com/" target="_blank" class="w-full py-3 rounded-xl bg-transparent border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold flex items-center justify-center gap-2 shadow-sm hover:shadow-[0_0_15px_rgba(236,72,153,0.4)] hover:border-pink-500 hover:text-pink-500 transition-all duration-300">
+                        <i class="fab fa-instagram text-xl"></i>
+                        <span>Instagram</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= AUTH MODAL ================= -->
+        <div id="auth-modal" class="absolute inset-0 z-50 bg-white/60 dark:bg-black/60 backdrop-blur-xl flex flex-col opacity-0 pointer-events-none transition-all duration-300 transform scale-95 items-center justify-center p-6">
+            <div class="glass-card w-full max-w-sm rounded-3xl p-6 relative flex flex-col shadow-2xl border-white/40">
+                <button onclick="toggleAuthModal()" class="absolute top-4 left-4 w-8 h-8 rounded-full bg-gray-100/50 dark:bg-slate-700/50 flex items-center justify-center text-gray-500 hover:text-red-500 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+
+                <!-- Login/Signup Form -->
+                <div id="auth-form-container" class="flex flex-col gap-4">
+                    <h2 class="text-2xl font-bold text-center text-gray-800 dark:text-white mb-2" id="auth-title">تسجيل الدخول</h2>
+                    
+                    <div class="flex flex-col gap-3">
+                        <input type="text" id="auth-name" placeholder="الاسم (لإنشاء حساب)" class="glass-input rounded-xl px-4 py-3 text-sm hidden">
+                        <input type="email" id="auth-email" placeholder="البريد الإلكتروني" class="glass-input rounded-xl px-4 py-3 text-sm">
+                        <input type="password" id="auth-pass" placeholder="كلمة المرور" class="glass-input rounded-xl px-4 py-3 text-sm">
+                        <div id="auth-photo-container" class="hidden flex-col gap-2">
+                            <div class="flex items-center gap-3 bg-white/30 dark:bg-black/20 p-2 rounded-xl border border-white/20">
+                                <img id="auth-preview-img" src="https://via.placeholder.com/100" class="w-10 h-10 rounded-full object-cover opacity-60 border border-gray-300">
+                                <label for="auth-photo-file" class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300 font-bold hover:underline">اختر صورة شخصية</label>
+                                <input type="file" id="auth-photo-file" accept="image/*" class="hidden" onchange="handleFileSelect(this)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="handleAuthAction()" id="auth-action-btn" class="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold shadow-lg hover:bg-indigo-700 transition-all mt-2">دخول</button>
+                    
+                    <p class="text-center text-xs text-gray-500 mt-2 cursor-pointer hover:text-indigo-500" onclick="toggleAuthMode()" id="auth-switch-text">ليس لديك حساب؟ إنشاء حساب جديد</p>
+                </div>
+
+                <!-- User Profile View -->
+                <div id="auth-profile-container" class="hidden flex-col items-center gap-4">
+                    <div class="relative group cursor-pointer" onclick="document.getElementById('update-photo-file').click()">
+                        <img id="profile-img-display" src="" class="w-24 h-24 rounded-full object-cover border-4 border-indigo-200 dark:border-indigo-800 shadow-xl bg-gray-200 group-hover:opacity-80 transition-opacity">
+                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="fas fa-camera text-white text-2xl drop-shadow-md"></i>
+                        </div>
+                        <input type="file" id="update-photo-file" accept="image/*" class="hidden" onchange="updateProfilePhoto(this)">
+                    </div>
+                    <div class="text-center">
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white" id="profile-name">User Name</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 font-mono" id="profile-email">user@example.com</p>
+                    </div>
+                    
+                    <div class="w-full h-px bg-gray-200 dark:bg-gray-700 my-2"></div>
+                    <button onclick="resetPassword()" class="text-xs text-indigo-500 hover:underline mb-2">إعادة تعيين كلمة المرور</button>
+                    
+                    <button onclick="handleLogout()" class="w-full py-2 rounded-xl bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 transition-all font-bold text-sm"><i class="fas fa-sign-out-alt mr-2"></i>تسجيل الخروج</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-8 left-1/2 transform translate-x-1/2 glass-panel text-indigo-900 dark:text-white px-6 py-3 rounded-full shadow-2xl translate-y-24 opacity-0 transition-all duration-500 z-50 text-sm font-bold flex items-center gap-2 border-indigo-200 dark:border-indigo-800">
+        <i class="fas fa-check-circle text-green-500 text-lg"></i>
+        <span id="toast-message">تمت العملية بنجاح</span>
+    </div>
+
+    <!-- Audio Beep -->
+    <audio id="timer-beep" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+
+    <script>
+        // --- FIREBASE CONFIG & INIT ---
+        const firebaseConfig = { 
+            apiKey: "AIzaSyB3IDkykHcq7eOZ_psgqP1-Edgqgb7_2wY", 
+            authDomain: "monjez-5fef8.firebaseapp.com", 
+            projectId: "monjez-5fef8", 
+            storageBucket: "monjez-5fef8.firebasestorage.app", 
+            messagingSenderId: "389640182212", 
+            appId: "1:389640182212:web:3b67460cd41949c97aac91", 
+            measurementId: "G-VLHZ902DQN"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        let currentUser = null;
+
+        // --- AUTH LOGIC ---
+        const authModal = document.getElementById('auth-modal');
+        const authForm = document.getElementById('auth-form-container');
+        const authProfile = document.getElementById('auth-profile-container');
+        let isLoginMode = true;
+        let selectedAvatarBase64 = null;
+
+        function handleFileSelect(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('auth-preview-img').src = e.target.result;
+                    document.getElementById('auth-preview-img').classList.remove('opacity-60');
+                    selectedAvatarBase64 = e.target.result;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function toggleAuthModal() {
+            if (authModal.classList.contains('opacity-0')) {
+                authModal.classList.remove('opacity-0', 'pointer-events-none', 'scale-95');
+                authModal.classList.add('opacity-100', 'pointer-events-auto', 'scale-100');
+            } else {
+                authModal.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+                authModal.classList.remove('opacity-100', 'pointer-events-auto', 'scale-100');
+            }
+        }
+
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            document.getElementById('auth-title').textContent = isLoginMode ? 'تسجيل الدخول' : 'إنشاء حساب جديد';
+            document.getElementById('auth-action-btn').textContent = isLoginMode ? 'دخول' : 'تسجيل';
+            document.getElementById('auth-switch-text').textContent = isLoginMode ? 'ليس لديك حساب؟ إنشاء حساب جديد' : 'لديك حساب بالفعل؟ تسجيل الدخول';
+            
+            const nameInput = document.getElementById('auth-name');
+            const photoContainer = document.getElementById('auth-photo-container');
+            if (isLoginMode) {
+                nameInput.classList.add('hidden');
+                photoContainer.classList.add('hidden');
+            } else {
+                nameInput.classList.remove('hidden');
+                photoContainer.classList.remove('hidden');
+            }
+        }
+
+        function handleAuthAction() {
+            const email = document.getElementById('auth-email').value;
+            const pass = document.getElementById('auth-pass').value;
+            const name = document.getElementById('auth-name').value;
+
+            if (!email || !pass) return showToast('يرجى ملء البيانات');
+
+            if (isLoginMode) {
+                auth.signInWithEmailAndPassword(email, pass)
+                    .then(() => { showToast('تم تسجيل الدخول'); toggleAuthModal(); })
+                    .catch(e => showToast('خطأ: ' + e.message));
+            } else {
+                if (!name) return showToast('الاسم مطلوب');
+                auth.createUserWithEmailAndPassword(email, pass)
+                    .then((userCredential) => {
+                        userCredential.user.updateProfile({
+                            displayName: name
+                        }).then(() => {
+                            // Create user doc
+                            db.collection('users').doc(userCredential.user.uid).set({
+                                email: email,
+                                photoBase64: selectedAvatarBase64,
+                                createdAt: new Date()
+                            });
+                            showToast('تم إنشاء الحساب');
+                            toggleAuthModal();
+                            location.reload(); // Reload to refresh profile display
+                        });
+                    })
+                    .catch(e => showToast('خطأ: ' + e.message));
+            }
+        }
+
+        function handleLogout() {
+            auth.signOut().then(() => {
+                showToast('تم تسجيل الخروج');
+                toggleAuthModal();
+                // Clear local data on logout if desired, or keep it. 
+                // For now, we keep local data but stop syncing.
+            });
+        }
+
+        function updateProfilePhoto(input) {
+            if (input.files && input.files[0] && currentUser) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64 = e.target.result;
+                    // Update UI immediately
+                    document.getElementById('profile-img-display').src = base64;
+                    document.getElementById('auth-img').src = base64;
+                    
+                    // Update Firestore
+                    db.collection('users').doc(currentUser.uid).set({
+                        photoBase64: base64
+                    }, { merge: true }).then(() => {
+                        showToast('تم تحديث الصورة');
+                    });
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function resetPassword() {
+            if(currentUser && currentUser.email) {
+                auth.sendPasswordResetEmail(currentUser.email)
+                    .then(() => showToast('تم إرسال رابط إعادة التعيين لبريدك'))
+                    .catch(e => showToast('خطأ: ' + e.message));
+            }
+        }
+
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            const authBtnText = document.getElementById('auth-text');
+            const authIcon = document.getElementById('auth-icon');
+            const authImg = document.getElementById('auth-img');
+
+            if (user) {
+                // Update UI for Logged In
+                authForm.classList.add('hidden');
+                authProfile.classList.remove('hidden');
+                authProfile.classList.add('flex');
+                
+                document.getElementById('profile-name').textContent = user.displayName || 'مستخدم';
+                document.getElementById('profile-email').textContent = user.email;
+                document.getElementById('profile-img-display').src = user.photoURL || 'https://via.placeholder.com/100';
+
+                // Update Header Button
+                authBtnText.textContent = "حسابي";
+                if (user.photoURL) {
+                    authIcon.classList.add('hidden');
+                    authImg.src = user.photoURL;
+                    authImg.classList.remove('hidden');
+                }
+                
+                // Check Firestore for custom avatar
+                db.collection('users').doc(user.uid).get().then(doc => {
+                    if(doc.exists && doc.data().photoBase64) {
+                        document.getElementById('profile-img-display').src = doc.data().photoBase64;
+                        document.getElementById('auth-img').src = doc.data().photoBase64;
+                        authIcon.classList.add('hidden');
+                        authImg.classList.remove('hidden');
+                    }
+                });
+
+                // Sync Data (Load from Cloud)
+                loadUserData();
+            } else {
+                // Update UI for Logged Out
+                authForm.classList.remove('hidden');
+                authProfile.classList.add('hidden');
+                authProfile.classList.remove('flex');
+
+                authBtnText.textContent = "تسجيل";
+                authIcon.classList.remove('hidden');
+                authImg.classList.add('hidden');
+            }
+        });
+
+        function loadUserData() {
+            if(!currentUser) return;
+            const docRef = db.collection('users').doc(currentUser.uid);
+            docRef.get().then((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    if(data.tasks) { tasks = data.tasks; renderTasks(); updateStats(); }
+                    if(data.notes) { notes = data.notes; renderNotes(); }
+                    if(data.history) { activityLog = data.history; }
+                } else {
+                    // First time login, save local data to cloud
+                    saveTasks(); saveNotes();
+                }
+            });
+        }
+
+        // --- UTILS ---
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+        
+        // --- CREATOR MODAL ---
+        const creatorModal = document.getElementById('creator-modal');
+        function toggleCreatorModal() {
+            if (creatorModal.classList.contains('opacity-0')) {
+                creatorModal.classList.remove('opacity-0', 'pointer-events-none', 'scale-95');
+                creatorModal.classList.add('opacity-100', 'pointer-events-auto', 'scale-100');
+            } else {
+                creatorModal.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+                creatorModal.classList.remove('opacity-100', 'pointer-events-auto', 'scale-100');
+            }
+        }
+
+        // --- HISTORY SYSTEM ---
+        let activityLog = JSON.parse(localStorage.getItem('monjez_history')) || [];
+        const historyModal = document.getElementById('history-modal');
+        const historyList = document.getElementById('history-list');
+
+        function toggleHistory() {
+            if (historyModal.classList.contains('opacity-0')) {
+                renderHistory();
+                historyModal.classList.remove('opacity-0', 'pointer-events-none', 'scale-95');
+                historyModal.classList.add('opacity-100', 'pointer-events-auto', 'scale-100');
+            } else {
+                historyModal.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+                historyModal.classList.remove('opacity-100', 'pointer-events-auto', 'scale-100');
+            }
+        }
+
+        function addToHistory(type, text) {
+            const entry = {
+                id: Date.now(),
+                type: type,
+                text: text,
+                time: new Date().toISOString()
+            };
+            activityLog.unshift(entry);
+            if(activityLog.length > 50) activityLog.pop();
+            localStorage.setItem('monjez_history', JSON.stringify(activityLog));
+            if(currentUser) db.collection('users').doc(currentUser.uid).set({ history: activityLog }, { merge: true });
+        }
+
+        function renderHistory() {
+            historyList.innerHTML = '';
+            if (activityLog.length === 0) {
+                document.getElementById('history-empty').classList.remove('hidden');
+                document.getElementById('history-empty').classList.add('flex');
+                return;
+            }
+            document.getElementById('history-empty').classList.add('hidden');
+            document.getElementById('history-empty').classList.remove('flex');
+
+            activityLog.forEach(item => {
+                const date = new Date(item.time);
+                const timeStr = date.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+                const dateStr = date.toLocaleDateString('ar-EG', {month:'short', day:'numeric'});
+                const icon = item.type === 'task' ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-clock text-amber-500"></i>';
+                const typeText = item.type === 'task' ? 'إنجاز مهمة' : 'جلسة تركيز';
+                
+                const li = document.createElement('li');
+                li.className = "glass-card p-3 rounded-xl flex items-center justify-between text-xs";
+                li.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-white/50 dark:bg-slate-700/50 flex items-center justify-center shadow-sm">${icon}</div>
+                        <div><p class="font-bold text-gray-800 dark:text-gray-100">${item.text}</p><p class="text-[10px] text-gray-500">${typeText}</p></div>
+                    </div>
+                    <div class="text-left text-gray-400 font-mono text-[10px]"><div>${timeStr}</div><div>${dateStr}</div></div>
+                `;
+                historyList.appendChild(li);
+            });
+        }
+
+        function clearHistory() {
+            activityLog = [];
+            localStorage.setItem('monjez_history', JSON.stringify(activityLog));
+            renderHistory();
+        }
+
+        // --- NAVIGATION SYSTEM ---
+        const views = {
+            home: document.getElementById('page-home'),
+            app: document.getElementById('page-app'),
+            timer: document.getElementById('page-timer')
+        };
+        const backBtn = document.getElementById('back-home-btn');
+        const homeActions = document.getElementById('home-actions');
+
+        function navigateTo(pageId) {
+            Object.values(views).forEach(el => {
+                el.classList.remove('active-view');
+                setTimeout(() => { if(!el.classList.contains('active-view')) el.style.display = 'none'; }, 400); 
+            });
+
+            const target = views[pageId];
+            target.style.display = 'flex';
+            void target.offsetWidth; 
+            target.classList.add('active-view');
+
+            if (pageId === 'home') {
+                backBtn.classList.add('hidden');
+                homeActions.classList.remove('opacity-0', 'pointer-events-none');
+            } else {
+                backBtn.classList.remove('hidden');
+                homeActions.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+        
+        Object.values(views).forEach(el => { if(el.id !== 'page-home') el.style.display = 'none'; });
+
+        // --- CLOCK & THEME ---
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('digital-clock').textContent = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute:'2-digit' });
+            document.getElementById('current-date-header').textContent = now.toLocaleDateString('ar-EG', { weekday: 'short', day: 'numeric' });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        function initTheme() {
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+        initTheme();
+        themeToggleBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        });
+
+        // --- TIMER LOGIC ---
+        let timerInterval;
+        let timeLeft = 25 * 60;
+        let isRunning = false;
+        let activeTimerTab = 'focus'; 
+        
+        // Stopwatch Variables
+        let swInterval;
+        let swStartTime = 0;
+        let swElapsedTime = 0;
+        let swRunning = false;
+        let lapCount = 0;
+
+        const timerDisplay = document.getElementById('timer-display');
+        const timerLabel = document.getElementById('timer-label');
+        const timerPulse = document.getElementById('timer-pulse');
+        const beepSound = document.getElementById('timer-beep');
+        const focusControls = document.getElementById('controls-focus');
+        const stopwatchControls = document.getElementById('controls-stopwatch');
+        const focusBtn = document.getElementById('timer-btn-focus');
+
+        function switchTimerTab(tab) {
+            activeTimerTab = tab;
+            resetTimer(); 
+            
+            document.getElementById('tab-timer-focus').classList.toggle('active', tab === 'focus');
+            document.getElementById('tab-timer-stopwatch').classList.toggle('active', tab === 'stopwatch');
+
+            const commonDisplay = document.getElementById('timer-common-display');
+
+            if (tab === 'focus') {
+                focusControls.classList.remove('hidden', 'opacity-0');
+                stopwatchControls.classList.add('hidden', 'opacity-0');
+                commonDisplay.classList.remove('opacity-0', 'pointer-events-none');
+                timeLeft = 25 * 60;
+                updateTimerUI();
+            } else {
+                focusControls.classList.add('hidden', 'opacity-0');
+                stopwatchControls.classList.remove('hidden', 'opacity-0');
+                commonDisplay.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        function formatTime(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            if (h > 0) return `${h}:${m}:${s}`;
+            return `${m}:${s}`;
+        }
+
+        function updateTimerUI() {
+            timerDisplay.textContent = formatTime(timeLeft);
+        }
+
+        // --- STOPWATCH LOGIC ---
+        function toggleStopwatch() {
+            const btn = document.getElementById('sw-btn-toggle');
+            if (swRunning) {
+                clearInterval(swInterval);
+                swRunning = false;
+                btn.innerHTML = '<i class="fas fa-play pl-1"></i>';
+                btn.classList.replace('bg-amber-500', 'bg-indigo-600');
+                btn.classList.replace('hover:bg-amber-600', 'hover:bg-indigo-700');
+            } else {
+                swStartTime = Date.now() - swElapsedTime;
+                swInterval = setInterval(updateStopwatchUI, 10);
+                swRunning = true;
+                btn.innerHTML = '<i class="fas fa-pause"></i>';
+                btn.classList.replace('bg-indigo-600', 'bg-amber-500');
+                btn.classList.replace('hover:bg-indigo-700', 'hover:bg-amber-600');
+            }
+        }
+
+        function updateStopwatchUI() {
+            swElapsedTime = Date.now() - swStartTime;
+            const date = new Date(swElapsedTime);
+            const m = date.getUTCMinutes().toString().padStart(2, '0');
+            const s = date.getUTCSeconds().toString().padStart(2, '0');
+            const ms = Math.floor(date.getUTCMilliseconds() / 10).toString().padStart(2, '0');
+            
+            document.getElementById('sw-display').textContent = `${m}:${s}`;
+            document.getElementById('sw-ms').textContent = `.${ms}`;
+            
+            // Rotate hand (60 seconds = 360 degrees)
+            const totalSeconds = (swElapsedTime / 1000) % 60;
+            const degrees = totalSeconds * 6;
+            document.getElementById('sw-hand-group').style.transform = `rotate(${degrees}deg)`;
+        }
+
+        function recordLap() {
+            if (!swElapsedTime) return;
+            lapCount++;
+            const lapsContainer = document.getElementById('sw-laps');
+            if (lapCount === 1) lapsContainer.innerHTML = ''; // Clear empty message
+            
+            const date = new Date(swElapsedTime);
+            const timeStr = `${date.getUTCMinutes().toString().padStart(2, '0')}:${date.getUTCSeconds().toString().padStart(2, '0')}.${Math.floor(date.getUTCMilliseconds() / 10).toString().padStart(2, '0')}`;
+            
+            const div = document.createElement('div');
+            div.className = "flex justify-between items-center p-2 border-b border-white/10 text-sm text-gray-700 dark:text-gray-300 animate-pop-in bg-white/20 dark:bg-white/5 rounded-lg mb-1";
+            div.innerHTML = `<span class="font-bold text-indigo-600 dark:text-indigo-400">#${lapCount}</span><span class="font-mono font-bold tracking-wider">${timeStr}</span>`;
+            
+            lapsContainer.prepend(div);
+        }
+
+        function toggleTimer() {
+            if (isRunning) {
+                clearInterval(timerInterval);
+                isRunning = false;
+                timerLabel.textContent = "مؤقت (متوقف)";
+                timerPulse.style.animationPlayState = 'paused';
+                if (activeTimerTab === 'focus') {
+                    focusBtn.innerHTML = '<i class="fas fa-play pl-1"></i>';
+                    focusBtn.classList.replace('bg-amber-500', 'bg-indigo-600');
+                    focusBtn.classList.replace('hover:bg-amber-600', 'hover:bg-indigo-700');
+                }
+            } else {
+                isRunning = true;
+                timerLabel.textContent = activeTimerTab === 'focus' ? "يرجى التركيز..." : "العد التنازلي...";
+                timerPulse.style.animationPlayState = 'running';
+
+                if (activeTimerTab === 'focus') {
+                    focusBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                    focusBtn.classList.replace('bg-indigo-600', 'bg-amber-500');
+                    focusBtn.classList.replace('hover:bg-indigo-700', 'hover:bg-amber-600');
+                }
+                
+                timerInterval = setInterval(() => {
+                    if (timeLeft > 0) {
+                        timeLeft--;
+                        updateTimerUI();
+                    } else {
+                        clearInterval(timerInterval);
+                        isRunning = false;
+                        timerLabel.textContent = "انتهى الوقت!";
+                        timerPulse.style.animationPlayState = 'paused';
+                        beepSound.play();
+                        confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                        addToHistory('timer', activeTimerTab === 'focus' ? 'جلسة تركيز' : 'عد تنازلي');
+                            focusBtn.innerHTML = '<i class="fas fa-play pl-1"></i>';
+                            focusBtn.classList.replace('bg-amber-500', 'bg-indigo-600');
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            
+            if (activeTimerTab === 'focus') {
+                timeLeft = 25 * 60;
+                focusBtn.innerHTML = '<i class="fas fa-play pl-1"></i>';
+                focusBtn.className = "w-20 h-20 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl flex items-center justify-center text-3xl transition-transform hover:scale-105 active:scale-95";
+                focusControls.classList.remove('hidden', 'opacity-0');
+                updateTimerUI();
+                timerLabel.textContent = "جاهز";
+                timerPulse.style.animationPlayState = 'paused';
+            } else {
+                // Reset Stopwatch
+                clearInterval(swInterval);
+                swRunning = false;
+                swElapsedTime = 0;
+                swStartTime = 0;
+                lapCount = 0;
+                document.getElementById('sw-display').textContent = "00:00";
+                document.getElementById('sw-ms').textContent = ".00";
+                document.getElementById('sw-hand-group').style.transform = `rotate(0deg)`;
+                document.getElementById('sw-laps').innerHTML = '<div class="text-center text-xs text-gray-400 py-2">لا توجد جولات مسجلة</div>';
+                const btn = document.getElementById('sw-btn-toggle');
+                btn.innerHTML = '<i class="fas fa-play pl-1"></i>';
+                btn.classList.replace('bg-amber-500', 'bg-indigo-600');
+                btn.classList.replace('hover:bg-amber-600', 'hover:bg-indigo-700');
+            }
+        }
+
+        function setTimer(minutes) {
+            resetTimer();
+            if(!minutes || minutes <= 0) return;
+            timeLeft = minutes * 60;
+            updateTimerUI();
+        }
+
+        // --- TASKS & NOTES LOGIC ---
+        const toastEl = document.getElementById('toast');
+        const toastMsg = document.getElementById('toast-message');
+        function showToast(message) {
+            toastMsg.textContent = message;
+            toastEl.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => toastEl.classList.add('translate-y-24', 'opacity-0'), 3000);
+        }
+
+        const viewTasks = document.getElementById('view-tasks');
+        const viewNotes = document.getElementById('view-notes');
+        const viewNoteDetail = document.getElementById('view-note-detail');
+        const tabTasks = document.getElementById('tab-tasks');
+        const tabNotes = document.getElementById('tab-notes');
+
+        window.switchTab = function(tabName) {
+            viewTasks.classList.remove('translate-x-0', '-translate-x-full', 'translate-x-full', 'opacity-0', 'pointer-events-none');
+            viewNotes.classList.remove('translate-x-0', '-translate-x-full', 'translate-x-full', 'opacity-0', 'pointer-events-none');
+            viewNoteDetail.classList.add('scale-95', 'opacity-0', 'pointer-events-none'); 
+
+            if (tabName === 'tasks') {
+                viewTasks.classList.add('translate-x-0');
+                viewNotes.classList.add('-translate-x-full', 'opacity-0', 'pointer-events-none');
+                tabTasks.classList.add('active');
+                tabNotes.classList.remove('active');
+            } else {
+                viewTasks.classList.add('translate-x-full', 'opacity-0', 'pointer-events-none');
+                viewNotes.classList.add('translate-x-0');
+                tabTasks.classList.remove('active');
+                tabNotes.classList.add('active');
+            }
+        }
+
+        // Tasks Core
+        let tasks = JSON.parse(localStorage.getItem('monjez_tasks')) || [];
+        let notes = JSON.parse(localStorage.getItem('monjez_notes')) || [];
+        let currentPriority = 'low';
+        let editingTaskId = null;
+        
+        const priorityConfig = {
+            low: { color: 'bg-blue-400', bg: 'bg-blue-50/50 dark:bg-blue-900/20', border: 'border-blue-100/30 dark:border-blue-700/30' },
+            medium: { color: 'bg-amber-400', bg: 'bg-amber-50/50 dark:bg-amber-900/20', border: 'border-amber-100/30 dark:border-amber-700/30' },
+            high: { color: 'bg-red-400', bg: 'bg-red-50/50 dark:bg-red-900/20', border: 'border-red-100/30 dark:border-red-700/30' }
+        };
+
+        function setPriority(level) {
+            currentPriority = level;
+            document.querySelectorAll('.priority-option').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById(`p-btn-${level}`).classList.add('selected');
+        }
+
+        function saveTasks() {
+            localStorage.setItem('monjez_tasks', JSON.stringify(tasks));
+            renderTasks();
+            updateStats();
+            if(currentUser) db.collection('users').doc(currentUser.uid).set({ tasks: tasks }, { merge: true });
+        }
+
+        function renderTasks() {
+            const list = document.getElementById('task-list');
+            const empty = document.getElementById('empty-state-tasks');
+            const clearBtn = document.getElementById('clear-all');
+            
+            list.innerHTML = '';
+            
+            if (tasks.length === 0) {
+                empty.classList.remove('hidden');
+                empty.classList.add('flex');
+                clearBtn.disabled = true;
+                clearBtn.classList.add('opacity-50');
+            } else {
+                empty.classList.add('hidden');
+                empty.classList.remove('flex');
+                clearBtn.disabled = false;
+                clearBtn.classList.remove('opacity-50');
+
+                const sorted = [...tasks].sort((a,b) => {
+                    const pVal = {high:0, medium:1, low:2};
+                    if (a.completed === b.completed) return pVal[a.priority||'low'] - pVal[b.priority||'low'];
+                    return a.completed - b.completed;
+                });
+
+                sorted.forEach(task => {
+                    const style = priorityConfig[task.priority || 'low'];
+                    const li = document.createElement('li');
+                    li.className = `task-item p-3 rounded-xl border flex items-center gap-3 relative glass-item ${style.bg} ${style.border} ${task.completed ? 'opacity-60 grayscale-[0.5]' : ''}`;
+                    
+                    // Interaction Handlers (Click/Double Click)
+                    li.addEventListener('click', (e) => {
+                         if(e.target.closest('button') || e.target.closest('input[type="checkbox"]')) return;
+                         if (!task.completed) toggleTask(task.id, true);
+                    });
+                    
+                    li.addEventListener('dblclick', (e) => {
+                        if (task.completed) toggleTask(task.id, false);
+                    });
+
+                    // Time display
+                    const timeDisplay = task.time ? `<span class="text-[10px] px-2 py-0.5 rounded-md bg-white/40 dark:bg-black/20 text-gray-600 dark:text-gray-300 ml-2 font-mono">${task.time}</span>` : '';
+
+                    li.innerHTML = `
+                        ${!task.completed ? `<div class="w-2 h-2 rounded-full ${style.color} shrink-0 ring-2 ring-white/30"></div>` : '<div class="w-2 shrink-0"></div>'}
+                        <label class="relative flex items-center p-1 cursor-pointer shrink-0">
+                            <input type="checkbox" class="task-checkbox w-5 h-5 appearance-none border-2 border-gray-400/50 rounded-lg checked:bg-indigo-500 checked:border-indigo-500 transition-all cursor-pointer bg-white/30" 
+                            ${task.completed ? 'checked' : ''} onclick="event.stopPropagation(); toggleTask(${task.id})">
+                            <i class="fas fa-check absolute text-white text-xs left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-0 pointer-events-none transition-opacity ${task.completed ? 'opacity-100' : ''}"></i>
+                        </label>
+                        <span class="flex-grow text-gray-800 dark:text-gray-100 text-sm font-semibold select-none cursor-pointer transition-all ${task.completed ? 'line-through text-gray-500' : ''}">
+                            ${task.text}
+                            ${timeDisplay}
+                        </span>
+                        <div class="flex gap-2 shrink-0">
+                            <button onclick="event.stopPropagation(); editTask(${task.id})" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 p-2.5 rounded-lg bg-white/50 dark:bg-slate-700/50 shadow-sm transition-transform hover:scale-105"><i class="fas fa-pen text-sm"></i></button>
+                            <button onclick="event.stopPropagation(); deleteTask(${task.id})" class="text-red-500 hover:text-red-700 p-2.5 rounded-lg bg-white/50 dark:bg-slate-700/50 shadow-sm transition-transform hover:scale-105"><i class="fas fa-trash-alt text-sm"></i></button>
+                        </div>
+                    `;
+                    list.appendChild(li);
+                });
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('total-tasks').textContent = tasks.length;
+            document.getElementById('completed-tasks').textContent = tasks.filter(t => t.completed).length;
+            document.getElementById('pending-count').textContent = `${tasks.length - tasks.filter(t => t.completed).length} متبقي`;
+        }
+
+        window.toggleTask = function(id, forceState = null) {
+            let justCompleted = false;
+            let completedTaskText = '';
+            
+            tasks = tasks.map(t => {
+                if (t.id === id) {
+                    const newState = forceState !== null ? forceState : !t.completed;
+                    
+                    if (newState === true && t.completed === false) {
+                        justCompleted = true;
+                        completedTaskText = t.text;
+                    }
+                    
+                    return { ...t, completed: newState };
+                }
+                return t;
+            });
+            saveTasks();
+            if (justCompleted) {
+                confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 }, colors: ['#4F46E5', '#FBBF24'] });
+                addToHistory('task', completedTaskText);
+            }
+        };
+
+        window.deleteTask = function(id) {
+            if (editingTaskId === id) cancelEdit();
+            tasks = tasks.filter(t => t.id !== id);
+            saveTasks();
+        };
+
+        window.editTask = function(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+            editingTaskId = id;
+            document.getElementById('task-input').value = task.text;
+            document.getElementById('task-time').value = task.time || '';
+            document.getElementById('task-input').focus();
+            setPriority(task.priority || 'low');
+            
+            document.getElementById('edit-indicator').classList.remove('hidden');
+            document.getElementById('edit-indicator').classList.add('flex');
+            document.getElementById('add-btn-text').textContent = "حفظ";
+            document.getElementById('add-btn-icon').className = "fas fa-check mr-1";
+            document.getElementById('add-btn').classList.replace('bg-indigo-600/90', 'bg-green-600/90');
+        };
+
+        window.cancelEdit = function() {
+            editingTaskId = null;
+            document.getElementById('task-input').value = '';
+            document.getElementById('task-time').value = '';
+            document.getElementById('edit-indicator').classList.add('hidden');
+            document.getElementById('edit-indicator').classList.remove('flex');
+            document.getElementById('add-btn-text').textContent = "إضافة";
+            document.getElementById('add-btn-icon').className = "fas fa-plus mr-1";
+            document.getElementById('add-btn').classList.replace('bg-green-600/90', 'bg-indigo-600/90');
+            setPriority('low');
+        };
+
+        function handleAdd() {
+            const input = document.getElementById('task-input');
+            const timeInput = document.getElementById('task-time');
+            const text = input.value.trim();
+            const time = timeInput.value;
+            
+            if (!text) return;
+
+            if (editingTaskId) {
+                tasks = tasks.map(t => t.id === editingTaskId ? {...t, text, time, priority: currentPriority} : t);
+                showToast('تم التعديل');
+                cancelEdit();
+            } else {
+                tasks.unshift({ id: Date.now(), text, time, completed: false, priority: currentPriority });
+                showToast('تمت الإضافة');
+                input.value = '';
+                timeInput.value = '';
+            }
+            saveTasks();
+        }
+
+        document.getElementById('add-btn').addEventListener('click', handleAdd);
+        document.getElementById('task-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') handleAdd(); });
+        document.getElementById('clear-all').addEventListener('click', () => {
+            const old = tasks.length;
+            tasks = tasks.filter(t => !t.completed);
+            if (tasks.length !== old) { saveTasks(); showToast('تم المسح'); }
+        });
+
+        // --- NOTES MANAGER (EDITABLE) ---
+        function saveNotes() {
+            localStorage.setItem('monjez_notes', JSON.stringify(notes));
+            renderNotes();
+            if(currentUser) db.collection('users').doc(currentUser.uid).set({ notes: notes }, { merge: true });
+        }
+        function renderNotes() {
+            const list = document.getElementById('notes-list');
+            const empty = document.getElementById('empty-state-notes');
+            list.innerHTML = '';
+            
+            if (notes.length === 0) {
+                empty.classList.remove('hidden');
+                empty.classList.add('flex');
+            } else {
+                empty.classList.add('hidden');
+                empty.classList.remove('flex');
+                notes.forEach(note => {
+                    const div = document.createElement('div');
+                    div.className = 'note-item glass-item bg-amber-50/40 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-200/40 relative group cursor-pointer hover:shadow-md transition-all';
+                    div.onclick = (e) => {
+                        if(e.target.closest('.delete-note-btn')) return;
+                        openNoteDetails(note);
+                    };
+                    div.innerHTML = `
+                        <h3 class="font-bold text-gray-800 dark:text-gray-100 text-sm mb-1">${note.title}</h3>
+                        <p class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed truncate">${note.body}</p>
+                        <button onclick="deleteNote(${note.id})" class="delete-note-btn absolute top-2 left-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"><i class="fas fa-times-circle"></i></button>
+                    `;
+                    list.appendChild(div);
+                });
+            }
+        }
+        
+        function openNoteDetails(note) {
+            document.getElementById('detail-id').value = note.id;
+            document.getElementById('detail-title-input').value = note.title;
+            document.getElementById('detail-body-input').value = note.body;
+            document.getElementById('detail-date').textContent = new Date(note.id).toLocaleDateString('ar-EG');
+            
+            viewNotes.classList.add('-translate-x-full', 'opacity-0', 'pointer-events-none');
+            viewNoteDetail.classList.remove('scale-95', 'opacity-0', 'pointer-events-none');
+            viewNoteDetail.classList.add('scale-100', 'opacity-100', 'pointer-events-auto');
+        }
+
+        function saveNoteUpdate() {
+            const id = parseInt(document.getElementById('detail-id').value);
+            const title = document.getElementById('detail-title-input').value;
+            const body = document.getElementById('detail-body-input').value;
+            
+            if (!title.trim() && !body.trim()) return;
+
+            notes = notes.map(n => n.id === id ? { ...n, title, body } : n);
+            saveNotes();
+            showToast('تم تحديث الملاحظة');
+            closeNoteDetails();
+        }
+
+        window.closeNoteDetails = function() {
+            viewNoteDetail.classList.remove('scale-100', 'opacity-100', 'pointer-events-auto');
+            viewNoteDetail.classList.add('scale-95', 'opacity-0', 'pointer-events-none');
+            viewNotes.classList.remove('-translate-x-full', 'opacity-0', 'pointer-events-none');
+        }
+
+        window.deleteNote = function(id) {
+            notes = notes.filter(n => n.id !== id);
+            saveNotes();
+        };
+        document.getElementById('add-note-btn').addEventListener('click', () => {
+            const tInput = document.getElementById('note-title');
+            const bInput = document.getElementById('note-body');
+            if(!tInput.value.trim() && !bInput.value.trim()) return;
+            notes.unshift({ id: Date.now(), title: tInput.value || 'بدون عنوان', body: bInput.value });
+            saveNotes();
+            tInput.value = ''; bInput.value = '';
+            showToast('تم الحفظ');
+        });
+
+        // --- INITIALIZATION ---
+        renderTasks();
+        updateStats();
+        renderNotes();
+        setPriority('low');
+
+        // --- SWIPE NAVIGATION ---
+        function initSwipe() {
+            let touchstartX = 0;
+            let touchendX = 0;
+            
+            function handleGesture(elementId, onSwipeRight, onSwipeLeft) {
+                const el = document.getElementById(elementId);
+                el.addEventListener('touchstart', e => { touchstartX = e.changedTouches[0].screenX; }, {passive: true});
+                el.addEventListener('touchend', e => {
+                    touchendX = e.changedTouches[0].screenX;
+                    if (touchendX < touchstartX - 50) onSwipeLeft();
+                    if (touchendX > touchstartX + 50) onSwipeRight();
+                }, {passive: true});
+            }
+
+            // App Page: Swipe Right -> Notes, Swipe Left -> Tasks
+            handleGesture('page-app', () => switchTab('notes'), () => switchTab('tasks'));
+
+            // Timer Page: Swipe Right -> Focus, Swipe Left -> Stopwatch
+            handleGesture('page-timer', () => switchTimerTab('focus'), () => switchTimerTab('stopwatch'));
+        }
+        initSwipe();
+
+    </script>
+</body>
+</html>
