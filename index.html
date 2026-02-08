@@ -188,9 +188,8 @@
         /* Boot Animation */
         .boot-finish { animation: bootFinish 0.8s cubic-bezier(0.7, 0, 0.3, 1) forwards; }
         @keyframes bootFinish { 
-            0% { opacity: 1; transform: scale(1); filter: brightness(1); }
-            40% { opacity: 1; transform: scale(1.02); filter: brightness(20); } /* Flash Effect */
-            100% { opacity: 0; transform: scale(1.1); pointer-events: none; visibility: hidden; }
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-100%); }
         }
 
         .scanlines {
@@ -213,11 +212,21 @@
 <body class="h-screen w-full flex flex-col items-center justify-center font-sans">
 
     <!-- Boot Screen -->
-    <div id="boot-screen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center text-white font-pixel text-2xl">
-        <div class="absolute inset-0 scanlines pointer-events-none"></div>
-        <div id="boot-text" class="animate-pulse mb-4 text-bit-accent tracking-widest">INITIALIZING...</div>
-        <div class="w-48 h-4 border-4 border-white p-1">
-            <div id="boot-bar" class="h-full bg-bit-success w-full" style="width: 0%; transition: width 2s steps(10);"></div>
+    <div id="boot-screen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center overflow-hidden">
+        <div class="absolute inset-0 scanlines opacity-10 pointer-events-none"></div>
+        
+        <!-- Logo Container -->
+        <div class="relative z-10 flex flex-col items-center justify-center">
+            <h1 id="boot-title" class="text-7xl font-display text-white tracking-widest opacity-0 transform -translate-y-10 transition-all duration-1000 ease-out drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">MONJEZ</h1>
+            <div id="boot-line" class="w-0 h-1 bg-bit-accent my-4 shadow-[0_0_10px_#ffcd3c] transition-all duration-700 ease-in-out"></div>
+            <p id="boot-sub" class="text-sm font-pixel text-bit-grey tracking-[0.5em] opacity-0 transform translate-y-10 transition-all duration-1000 ease-out">SYSTEM INITIALIZED</p>
+        </div>
+
+        <!-- Loading Indicator (Bottom) -->
+        <div id="boot-loader" class="absolute bottom-10 flex gap-2 opacity-0 transition-opacity duration-500">
+            <div class="w-2 h-2 bg-bit-success animate-bounce"></div>
+            <div class="w-2 h-2 bg-bit-success animate-bounce" style="animation-delay: 0.1s"></div>
+            <div class="w-2 h-2 bg-bit-success animate-bounce" style="animation-delay: 0.2s"></div>
         </div>
     </div>
 
@@ -232,10 +241,8 @@
                 </div>
                 <div class="flex flex-col">
                     <h1 class="text-lg font-display text-bit-accent leading-none mb-1 truncate max-w-[120px] flex items-center gap-2"><span id="player-flag"></span> <span id="player-name">PLAYER 1</span></h1>
-                    <div class="flex gap-1" id="hearts-container">
-                        <i class="fas fa-heart text-bit-danger text-xs animate-pulse"></i>
-                        <i class="fas fa-heart text-bit-danger text-xs animate-pulse" style="animation-delay: 0.2s"></i>
-                        <i class="fas fa-heart text-bit-danger text-xs animate-pulse" style="animation-delay: 0.4s"></i>
+                    <div id="header-clock" class="text-[12px] font-pixel text-bit-grey tracking-widest flex items-center gap-1 opacity-80">
+                        <i class="far fa-clock text-[10px]"></i> <span id="clock-time">--:--</span>
                     </div>
                 </div>
             </div>
@@ -376,21 +383,19 @@
             </div>
 
             <!-- ================= VIEW 4: GLOBAL CHAT ================= -->
-            <div id="view-chat" class="view-section p-4 flex flex-col h-full pb-24">
-                <div class="bg-bit-primary border-4 border-black p-2 text-center mb-4 shadow-pixel">
-                    <h2 class="text-xl font-display text-white" data-i18n="global_chat">الدردشة العالمية</h2>
+            <div id="view-chat" class="view-section p-4 flex flex-col h-full pb-36">
+                <div class="bg-bit-primary border-4 border-black p-2 text-center mb-2 shadow-pixel flex justify-between items-center">
+                    <h2 class="text-lg font-display text-white" data-i18n="global_chat">GLOBAL CHAT</h2>
+                    <button onclick="shareStats()" class="pixel-btn yellow text-[10px] px-2 py-1 text-black font-bold" data-i18n="share_stats">SHARE STATS</button>
                 </div>
                 
-                <div id="chat-messages" class="flex-grow overflow-y-auto custom-scrollbar bg-bit-dark border-4 border-black p-4 mb-4 shadow-pixel-inset flex flex-col gap-3">
-                    <!-- Messages injected here -->
-                    <div class="text-center text-gray-500 mt-10 font-pixel text-xs">CONNECTING TO SERVER...</div>
+                <div id="chat-messages" class="flex-grow overflow-y-auto custom-scrollbar flex flex-col gap-2 p-2 bg-black/20 border-4 border-black mb-2">
+                    <div class="text-center text-gray-500 text-xs mt-4">CONNECTING...</div>
                 </div>
-                
+
                 <div class="flex gap-2">
-                    <input type="text" id="chat-input" class="flex-grow pixel-input text-sm" placeholder="..." onkeypress="if(event.key === 'Enter') sendMessage()">
-                    <button onclick="sendMessage()" class="pixel-btn green w-16 flex items-center justify-center text-black">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
+                    <input type="text" id="chat-input" class="flex-grow pixel-input text-sm" placeholder="..." data-i18n="say_something" onkeypress="if(event.key === 'Enter') sendMessage()">
+                    <button onclick="sendMessage()" class="pixel-btn green w-12 flex items-center justify-center text-black"><i class="fas fa-paper-plane"></i></button>
                 </div>
             </div>
 
@@ -409,23 +414,23 @@
 
             <!-- Nav Buttons -->
             <div class="flex justify-between w-full sm:w-auto sm:gap-4 px-2">
-                <button onclick="switchView('quests')" class="nav-pixel active w-20 h-16 bg-bit-grey border-b-4 border-r-4 border-black rounded-sm flex flex-col items-center justify-center active:border-b-0 active:border-r-0 active:translate-y-1 active:translate-x-1 transition-all group" data-target="view-quests">
-                    <i class="fas fa-scroll text-xl mb-1 group-hover:animate-bounce"></i>
+                <button onclick="switchView('quests')" class="nav-pixel active flex-1 sm:w-20 h-16 bg-bit-grey border-b-4 border-r-4 border-black rounded-sm flex flex-col items-center justify-center active:border-b-0 active:border-r-0 active:translate-y-1 active:translate-x-1 transition-all group" data-target="view-quests">
+                    <i class="fas fa-scroll text-xl mb-1"></i>
                     <span class="text-[10px] font-pixel font-bold" data-i18n="quests">QUESTS</span>
                 </button>
                 
-                <button onclick="switchView('battle')" class="nav-pixel w-20 h-16 bg-bit-grey border-b-4 border-r-4 border-black rounded-sm flex flex-col items-center justify-center active:border-b-0 active:border-r-0 active:translate-y-1 active:translate-x-1 transition-all group" data-target="view-battle">
-                    <i class="fas fa-skull text-xl mb-1 group-hover:animate-bounce"></i>
+                <button onclick="switchView('battle')" class="nav-pixel flex-1 sm:w-20 h-16 bg-bit-grey border-b-4 border-r-4 border-black rounded-sm flex flex-col items-center justify-center active:border-b-0 active:border-r-0 active:translate-y-1 active:translate-x-1 transition-all group" data-target="view-battle">
+                    <i class="fas fa-skull text-xl mb-1"></i>
                     <span class="text-[10px] font-pixel font-bold" data-i18n="battle">BATTLE</span>
                 </button>
                 
-                <button onclick="switchView('inventory')" class="nav-pixel w-20 h-16 bg-bit-grey border-b-4 border-r-4 border-black rounded-sm flex flex-col items-center justify-center active:border-b-0 active:border-r-0 active:translate-y-1 active:translate-x-1 transition-all group" data-target="view-inventory">
-                    <i class="fas fa-briefcase text-xl mb-1 group-hover:animate-bounce"></i>
+                <button onclick="switchView('inventory')" class="nav-pixel flex-1 sm:w-20 h-16 bg-bit-grey border-b-4 border-r-4 border-black rounded-sm flex flex-col items-center justify-center active:border-b-0 active:border-r-0 active:translate-y-1 active:translate-x-1 transition-all group" data-target="view-inventory">
+                    <i class="fas fa-briefcase text-xl mb-1"></i>
                     <span class="text-[10px] font-pixel font-bold" data-i18n="items">ITEMS</span>
                 </button>
 
-                <button onclick="switchView('chat')" class="nav-pixel w-20 h-16 bg-bit-grey border-b-4 border-r-4 border-black rounded-sm flex flex-col items-center justify-center active:border-b-0 active:border-r-0 active:translate-y-1 active:translate-x-1 transition-all group" data-target="view-chat">
-                    <i class="fas fa-comments text-xl mb-1 group-hover:animate-bounce"></i>
+                <button onclick="switchView('chat')" class="nav-pixel flex-1 sm:w-20 h-16 bg-bit-grey border-b-4 border-r-4 border-black rounded-sm flex flex-col items-center justify-center active:border-b-0 active:border-r-0 active:translate-y-1 active:translate-x-1 transition-all group" data-target="view-chat">
+                    <i class="fas fa-comments text-xl mb-1"></i>
                     <span class="text-[10px] font-pixel font-bold" data-i18n="chat">CHAT</span>
                 </button>
             </div>
@@ -638,8 +643,12 @@
                 rank: "الترتيب",
                 score: "المستوى / XP",
                 no_players: "لا يوجد لاعبين بعد",
+                chat: "الدردشة",
                 global_chat: "الدردشة العالمية",
-                chat: "الدردشة"
+                say_something: "قل شيئاً...",
+                send: "إرسال",
+                share_stats: "شارك إنجازي",
+                login_to_chat: "سجل دخولك للدردشة"
             },
             en: {
                 history: "HISTORY",
@@ -686,8 +695,12 @@
                 rank: "RANK",
                 score: "LEVEL / XP",
                 no_players: "NO PLAYERS YET",
+                chat: "CHAT",
                 global_chat: "GLOBAL CHAT",
-                chat: "CHAT"
+                say_something: "Say something...",
+                send: "SEND",
+                share_stats: "SHARE STATS",
+                login_to_chat: "LOGIN TO CHAT"
             }
         };
 
@@ -1532,71 +1545,6 @@
             document.getElementById('leaderboard-modal').classList.remove('flex');
         }
 
-        // --- CHAT SYSTEM ---
-        let chatUnsubscribe = null;
-
-        function initChat() {
-            if(chatUnsubscribe) return;
-            
-            const list = document.getElementById('chat-messages');
-            
-            chatUnsubscribe = db.collection('messages')
-                .orderBy('timestamp', 'desc')
-                .limit(50)
-                .onSnapshot(snapshot => {
-                    list.innerHTML = '';
-                    if(snapshot.empty) {
-                        list.innerHTML = '<div class="text-center text-gray-500 mt-10 font-pixel">NO MESSAGES YET</div>';
-                        return;
-                    }
-                    
-                    const docs = [];
-                    snapshot.forEach(doc => docs.push(doc));
-                    docs.reverse(); // Show newest at bottom
-
-                    docs.forEach(doc => {
-                        const data = doc.data();
-                        const isMe = state.user && data.uid === state.user.uid;
-                        const msgDiv = document.createElement('div');
-                        msgDiv.className = `flex flex-col gap-1 ${isMe ? 'items-end' : 'items-start'}`;
-                        
-                        const bubbleColor = isMe ? 'bg-bit-primary text-white border-bit-primary' : 'bg-gray-700 text-gray-200 border-gray-600';
-                        const senderName = data.name || 'UNKNOWN';
-                        const flag = data.flag || '';
-                        
-                        msgDiv.innerHTML = `
-                            ${!isMe ? `<div class="text-[10px] text-gray-500 font-pixel px-1">${flag} ${senderName}</div>` : ''}
-                            <div class="${bubbleColor} px-3 py-2 rounded-sm border-2 text-xs font-sans max-w-[85%] break-words shadow-sm relative">
-                                ${data.text}
-                            </div>
-                        `;
-                        list.appendChild(msgDiv);
-                    });
-                    list.scrollTop = list.scrollHeight;
-                });
-        }
-
-        function sendMessage() {
-            if(!state.user) return toggleAuthModal();
-            const input = document.getElementById('chat-input');
-            const text = input.value.trim();
-            if(!text) return;
-
-            const flag = document.getElementById('player-flag').textContent || '🌍';
-            const name = (state.user.displayName || 'PLAYER').toUpperCase();
-
-            db.collection('messages').add({
-                text: text,
-                uid: state.user.uid,
-                name: name,
-                flag: flag,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                input.value = '';
-                playSfx('coin');
-            }).catch(e => alert(e.message));
-        }
-
         // --- NAVIGATION ---
         function switchView(viewId) {
             playSfx('jump');
@@ -1617,20 +1565,138 @@
         renderInventory();
         setLanguage(currentLang);
 
-        // Boot Animation
+        // --- CLOCK & BOOT ---
+        function updateHeaderClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            const el = document.getElementById('clock-time');
+            if(el) el.textContent = timeString;
+        }
+        setInterval(updateHeaderClock, 1000);
+        updateHeaderClock();
+
         window.onload = () => {
-            const bar = document.getElementById('boot-bar');
-            const text = document.getElementById('boot-text');
+            const title = document.getElementById('boot-title');
+            const line = document.getElementById('boot-line');
+            const sub = document.getElementById('boot-sub');
+            const loader = document.getElementById('boot-loader');
             
-            // Start loading sequence
-            setTimeout(() => { bar.style.width = "100%"; }, 100);
-            setTimeout(() => { text.textContent = "LOADING ASSETS..."; }, 800);
-            setTimeout(() => { text.textContent = "SYSTEM READY"; text.classList.replace('text-bit-accent', 'text-green-400'); }, 1800);
+            // Sequence
+            setTimeout(() => {
+                title.classList.remove('opacity-0', '-translate-y-10');
+                playSfx('coin');
+            }, 300);
 
             setTimeout(() => {
+                line.classList.remove('w-0');
+                line.classList.add('w-32');
+            }, 1000);
+
+            setTimeout(() => {
+                sub.classList.remove('opacity-0', 'translate-y-10');
+                loader.classList.remove('opacity-0');
+            }, 1600);
+
+            setTimeout(() => {
+                playSfx('win');
                 document.getElementById('boot-screen').classList.add('boot-finish');
-            }, 2200);
+            }, 3000);
         };
+
+        // --- CHAT LOGIC ---
+        let chatUnsubscribe = null;
+        let chatData = [];
+        let chatRenderInterval = null;
+
+        function initChat() {
+            if(chatUnsubscribe) return;
+
+            const list = document.getElementById('chat-messages');
+            
+            const renderChat = () => {
+                const now = Date.now();
+                const cutoff = now - 5 * 60 * 1000; // 5 minutes
+
+                // Filter messages older than 5 minutes
+                const visibleMsgs = chatData.filter(d => {
+                    const ts = d.timestamp ? (d.timestamp.toMillis ? d.timestamp.toMillis() : Date.now()) : Date.now();
+                    return ts > cutoff;
+                }).sort((a, b) => {
+                    const ta = a.timestamp ? (a.timestamp.toMillis ? a.timestamp.toMillis() : Date.now()) : Date.now();
+                    const tb = b.timestamp ? (b.timestamp.toMillis ? b.timestamp.toMillis() : Date.now()) : Date.now();
+                    return ta - tb;
+                });
+
+                list.innerHTML = '';
+                if(visibleMsgs.length === 0) {
+                    list.innerHTML = `<div class="text-center text-gray-500 text-xs mt-4" data-i18n="no_players">${translations[currentLang].no_players}</div>`;
+                    return;
+                }
+
+                visibleMsgs.forEach(msg => {
+                    const div = document.createElement('div');
+                    const isMe = state.user && msg.uid === state.user.uid;
+                    const c = countries.find(x => x.code === msg.country) || { flag: '🌍' };
+                    
+                    div.className = `flex flex-col gap-1 mb-2 ${isMe ? 'items-end' : 'items-start'}`;
+                    div.innerHTML = `
+                        <div class="flex items-center gap-1 text-[10px] text-gray-500 font-pixel">
+                            <span>${c.flag}</span>
+                            <span class="${isMe ? 'text-bit-success' : 'text-bit-accent'}">${msg.name}</span>
+                        </div>
+                        <div class="bg-bit-dark border-2 ${isMe ? 'border-bit-success' : 'border-gray-600'} p-2 text-xs text-white max-w-[80%] break-words relative shadow-sm">
+                            ${msg.text}
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+                list.scrollTop = list.scrollHeight;
+            };
+
+            chatUnsubscribe = db.collection('global_chat')
+                .orderBy('timestamp', 'desc')
+                .limit(50)
+                .onSnapshot(snapshot => {
+                    chatData = [];
+                    snapshot.forEach(doc => chatData.push(doc.data()));
+                    renderChat();
+                });
+            
+            // Re-render every 30 seconds to clean up old messages
+            if(chatRenderInterval) clearInterval(chatRenderInterval);
+            chatRenderInterval = setInterval(renderChat, 30000);
+        }
+
+        function sendMessage(customText = null) {
+            if(!state.user) return alert(translations[currentLang].login_to_chat);
+            const input = document.getElementById('chat-input');
+            const text = customText || input.value.trim();
+            if(!text) return;
+
+            db.collection('users').doc(state.user.uid).get().then(doc => {
+                const userData = doc.data() || {};
+                const name = userData.name || state.user.displayName || 'PLAYER';
+                const country = userData.country || 'global';
+
+                db.collection('global_chat').add({
+                    text: text,
+                    uid: state.user.uid,
+                    name: name,
+                    country: country,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                if(!customText) input.value = '';
+                playSfx('coin');
+            });
+        }
+
+        function shareStats() {
+            if(!state.user) return alert(translations[currentLang].login_to_chat);
+            const level = Math.floor(state.xp / 100) + 1;
+            const msg = `🏆 I reached LEVEL ${level} with ${state.xp} XP!`;
+            sendMessage(msg);
+        }
 
     </script>
 </body>
