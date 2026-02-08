@@ -203,6 +203,10 @@
             background-size: 100% 4px;
         }
 
+        .rendering-pixelated {
+            image-rendering: pixelated;
+        }
+
         /* Full Screen Modal Animation */
         .modal-full-enter { animation: modalSlideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
         @keyframes modalSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
@@ -479,7 +483,7 @@
                     <!-- Profile View (When Logged In) -->
                     <div id="profile-view" class="hidden flex-col items-center gap-4">
                         <div class="relative group cursor-pointer" onclick="document.getElementById('update-photo').click()">
-                            <img id="profile-img-lg" src="" class="w-24 h-24 border-4 border-white object-cover bg-black rendering-pixelated">
+                            <img id="profile-img-lg" src="https://via.placeholder.com/100" class="w-24 h-24 border-4 border-white object-cover bg-black rendering-pixelated">
                             <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100">
                                 <i class="fas fa-camera"></i>
                             </div>
@@ -502,6 +506,9 @@
                             <button onclick="setLanguage('ar')" class="flex-1 pixel-btn grey text-xs py-2">العربية</button>
                             <button onclick="setLanguage('en')" class="flex-1 pixel-btn grey text-xs py-2">ENGLISH</button>
                         </div>
+
+                        <!-- Sound Toggle -->
+                        <button onclick="toggleSound()" id="sound-toggle-btn" class="pixel-btn green w-full py-2 text-xs">SOUND: ON</button>
 
                         <button onclick="handleLogout()" class="pixel-btn red w-full py-2" data-i18n="logout">QUIT GAME (LOGOUT)</button>
                     </div>
@@ -648,7 +655,9 @@
                 say_something: "قل شيئاً...",
                 send: "إرسال",
                 share_stats: "شارك إنجازي",
-                login_to_chat: "سجل دخولك للدردشة"
+                login_to_chat: "سجل دخولك للدردشة",
+                sound_on: "الصوت: مفعل",
+                sound_off: "الصوت: معطل"
             },
             en: {
                 history: "HISTORY",
@@ -700,7 +709,9 @@
                 say_something: "Say something...",
                 send: "SEND",
                 share_stats: "SHARE STATS",
-                login_to_chat: "LOGIN TO CHAT"
+                login_to_chat: "LOGIN TO CHAT",
+                sound_on: "SOUND: ON",
+                sound_off: "SOUND: OFF"
             }
         };
 
@@ -733,6 +744,7 @@
             
             // Update dynamic elements
             updateAuthUI();
+            updateSoundButton();
             updateTimerButtons();
         }
 
@@ -802,7 +814,10 @@
         ];
 
         // --- AUDIO ---
+        let soundEnabled = localStorage.getItem('pixel_sound') !== 'off';
+
         function playSfx(id) {
+            if(!soundEnabled) return;
             const audio = document.getElementById(`sfx-${id}`);
             if(audio) { audio.currentTime = 0; audio.volume = 0.3; audio.play().catch(()=>{}); }
         }
@@ -859,6 +874,7 @@
                     }
                     renderProfileCountryOptions(currentCountry);
                 });
+                updateSoundButton();
             } else {
                 avatar.src = 'https://via.placeholder.com/100';
                 name.textContent = "PLAYER 1";
@@ -1603,6 +1619,22 @@
             }, 3000);
         };
 
+        // --- SOUND SETTINGS ---
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            localStorage.setItem('pixel_sound', soundEnabled ? 'on' : 'off');
+            updateSoundButton();
+            if(soundEnabled) playSfx('coin');
+        }
+
+        function updateSoundButton() {
+            const btn = document.getElementById('sound-toggle-btn');
+            if(btn) {
+                btn.textContent = soundEnabled ? translations[currentLang].sound_on : translations[currentLang].sound_off;
+                btn.className = `pixel-btn w-full py-2 text-xs ${soundEnabled ? 'green' : 'red'}`;
+            }
+        }
+
         // --- CHAT LOGIC ---
         let chatUnsubscribe = null;
         let chatData = [];
@@ -1637,10 +1669,12 @@
                     const div = document.createElement('div');
                     const isMe = state.user && msg.uid === state.user.uid;
                     const c = countries.find(x => x.code === msg.country) || { flag: '🌍' };
+                    const photoSrc = msg.photo || 'https://via.placeholder.com/100';
                     
                     div.className = `flex flex-col gap-1 mb-2 ${isMe ? 'items-end' : 'items-start'}`;
                     div.innerHTML = `
                         <div class="flex items-center gap-1 text-[10px] text-gray-500 font-pixel">
+                            <img src="${photoSrc}" class="w-6 h-6 border-2 border-gray-600 object-cover bg-black rendering-pixelated">
                             <span>${c.flag}</span>
                             <span class="${isMe ? 'text-bit-success' : 'text-bit-accent'}">${msg.name}</span>
                         </div>
@@ -1677,12 +1711,14 @@
                 const userData = doc.data() || {};
                 const name = userData.name || state.user.displayName || 'PLAYER';
                 const country = userData.country || 'global';
+                const photo = userData.photoBase64 || state.user.photoURL || '';
 
                 db.collection('global_chat').add({
                     text: text,
                     uid: state.user.uid,
                     name: name,
                     country: country,
+                    photo: photo,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
