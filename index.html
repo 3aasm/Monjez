@@ -375,6 +375,25 @@
                 </div>
             </div>
 
+            <!-- ================= VIEW 4: GLOBAL CHAT ================= -->
+            <div id="view-chat" class="view-section p-4 flex flex-col h-full pb-24">
+                <div class="bg-bit-primary border-4 border-black p-2 text-center mb-4 shadow-pixel">
+                    <h2 class="text-xl font-display text-white" data-i18n="global_chat">الدردشة العالمية</h2>
+                </div>
+                
+                <div id="chat-messages" class="flex-grow overflow-y-auto custom-scrollbar bg-bit-dark border-4 border-black p-4 mb-4 shadow-pixel-inset flex flex-col gap-3">
+                    <!-- Messages injected here -->
+                    <div class="text-center text-gray-500 mt-10 font-pixel text-xs">CONNECTING TO SERVER...</div>
+                </div>
+                
+                <div class="flex gap-2">
+                    <input type="text" id="chat-input" class="flex-grow pixel-input text-sm" placeholder="..." onkeypress="if(event.key === 'Enter') sendMessage()">
+                    <button onclick="sendMessage()" class="pixel-btn green w-16 flex items-center justify-center text-black">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+
         </main>
 
         <!-- CONTROLLER (Navigation) -->
@@ -403,6 +422,11 @@
                 <button onclick="switchView('inventory')" class="nav-pixel w-20 h-16 bg-bit-grey border-b-4 border-r-4 border-black rounded-sm flex flex-col items-center justify-center active:border-b-0 active:border-r-0 active:translate-y-1 active:translate-x-1 transition-all group" data-target="view-inventory">
                     <i class="fas fa-briefcase text-xl mb-1 group-hover:animate-bounce"></i>
                     <span class="text-[10px] font-pixel font-bold" data-i18n="items">ITEMS</span>
+                </button>
+
+                <button onclick="switchView('chat')" class="nav-pixel w-20 h-16 bg-bit-grey border-b-4 border-r-4 border-black rounded-sm flex flex-col items-center justify-center active:border-b-0 active:border-r-0 active:translate-y-1 active:translate-x-1 transition-all group" data-target="view-chat">
+                    <i class="fas fa-comments text-xl mb-1 group-hover:animate-bounce"></i>
+                    <span class="text-[10px] font-pixel font-bold" data-i18n="chat">CHAT</span>
                 </button>
             </div>
             
@@ -612,7 +636,10 @@
                 select_country: "اختر الدولة:",
                 leaderboard: "أفضل اللاعبين",
                 rank: "الترتيب",
-                score: "المستوى / XP"
+                score: "المستوى / XP",
+                no_players: "لا يوجد لاعبين بعد",
+                global_chat: "الدردشة العالمية",
+                chat: "الدردشة"
             },
             en: {
                 history: "HISTORY",
@@ -657,7 +684,10 @@
                 select_country: "SELECT COUNTRY:",
                 leaderboard: "TOP PLAYERS",
                 rank: "RANK",
-                score: "LEVEL / XP"
+                score: "LEVEL / XP",
+                no_players: "NO PLAYERS YET",
+                global_chat: "GLOBAL CHAT",
+                chat: "CHAT"
             }
         };
 
@@ -810,6 +840,10 @@
                         const c = countries.find(x => x.code === currentCountry);
                         flagDisplay.textContent = c ? c.flag : '🌍';
                     }
+                    // Sync Name if missing in Firestore
+                    if(doc.exists && !doc.data().name && u.displayName) {
+                        db.collection('users').doc(u.uid).set({ name: u.displayName }, { merge: true });
+                    }
                     renderProfileCountryOptions(currentCountry);
                 });
             } else {
@@ -922,14 +956,16 @@
                     cred.user.updateProfile({ displayName: name }).then(() => {
                         db.collection('users').doc(cred.user.uid).set({
                             email: email,
+                            name: name,
                             photoBase64: selectedAvatarBase64,
                             country: country,
                             xp: 0,
                             createdAt: new Date()
+                        }).then(() => {
+                            toggleAuthModal();
+                            playSfx('win');
+                            location.reload();
                         });
-                        toggleAuthModal();
-                        playSfx('win');
-                        location.reload();
                     });
                 }).catch(e => alert(e.message));
             }
@@ -1419,11 +1455,13 @@
             modal.classList.add('flex');
             playSfx('jump');
 
+            list.innerHTML = '<div class="text-center text-gray-500 mt-10 animate-pulse">LOADING...</div>';
+
             // Fetch Top 30
             db.collection('users').orderBy('xp', 'desc').limit(30).get().then(snapshot => {
                 list.innerHTML = '';
                 if(snapshot.empty) {
-                    list.innerHTML = '<div class="text-center text-gray-500 mt-10">NO PLAYERS YET</div>';
+                    list.innerHTML = `<div class="text-center text-gray-500 mt-10" data-i18n="no_players">${translations[currentLang].no_players}</div>`;
                     return;
                 }
 
@@ -1432,19 +1470,38 @@
                     const d = doc.data();
                     const c = countries.find(x => x.code === d.country) || { flag: '🌍' };
                     const level = Math.floor((d.xp || 0) / 100) + 1;
+                    const playerName = d.name || (d.email ? d.email.split('@')[0] : 'PLAYER');
                     
                     const div = document.createElement('div');
                     div.className = `flex items-center gap-2 p-2 border-b border-gray-800 ${rank <= 3 ? 'bg-white/5' : ''}`;
                     
-                    let rankBadge = `<span class="w-6 text-center font-pixel text-gray-500">#${rank}</span>`;
-                    if(rank === 1) rankBadge = `<span class="w-6 text-center"><i class="fas fa-crown text-yellow-400"></i></span>`;
-                    if(rank === 2) rankBadge = `<span class="w-6 text-center"><i class="fas fa-crown text-gray-300"></i></span>`;
-                    if(rank === 3) rankBadge = `<span class="w-6 text-center"><i class="fas fa-crown text-orange-400"></i></span>`;
+                    let borderClass = 'border-gray-700';
+                    let textClass = 'text-gray-500';
+                    let crownIcon = '';
+                    
+                    if(rank === 1) { 
+                        borderClass = 'border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]'; 
+                        textClass = 'text-yellow-400'; 
+                        crownIcon = '<i class="fas fa-crown text-yellow-400 text-[8px] absolute -top-2.5 left-1/2 -translate-x-1/2 drop-shadow-[0_0_5px_rgba(250,204,21,0.8)]"></i>'; 
+                    }
+                    else if(rank === 2) { 
+                        borderClass = 'border-gray-300 shadow-[0_0_10px_rgba(209,213,219,0.8)]'; 
+                        textClass = 'text-gray-300'; 
+                        crownIcon = '<i class="fas fa-crown text-gray-300 text-[8px] absolute -top-3 left-1/2 -translate-x-1/2 drop-shadow-[0_0_5px_rgba(209,213,219,0.8)]"></i>'; 
+                    }
+                    else if(rank === 3) { 
+                        borderClass = 'border-orange-400 shadow-[0_0_10px_rgba(251,146,60,0.8)]'; 
+                        textClass = 'text-orange-400'; 
+                        crownIcon = '<i class="fas fa-crown text-orange-400 text-[8px] absolute -top-3 left-1/2 -translate-x-1/2 drop-shadow-[0_0_5px_rgba(251,146,60,0.8)]"></i>'; 
+                    }
 
                     div.innerHTML = `
-                        ${rankBadge}
+                        <div class="relative w-8 flex justify-center shrink-0 mt-1">
+                            ${crownIcon}
+                            <div class="w-6 h-6 border-2 ${borderClass} bg-black flex items-center justify-center font-pixel text-xs ${textClass}">${rank}</div>
+                        </div>
                         <div class="text-xl">${c.flag}</div>
-                        <div class="flex-grow font-sans text-sm text-white truncate">${d.email ? d.email.split('@')[0] : 'PLAYER'}</div>
+                        <div class="flex-grow font-sans text-sm text-white truncate">${playerName}</div>
                         <div class="text-right font-pixel text-bit-accent text-xs">
                             <div>LVL ${level}</div>
                             <div class="text-gray-500">${d.xp || 0} XP</div>
@@ -1453,12 +1510,91 @@
                     list.appendChild(div);
                     rank++;
                 });
+            }).catch(error => {
+                console.error("Leaderboard Error:", error);
+                let msg = "ERROR";
+                let subMsg = error.message;
+                
+                if(error.code === 'permission-denied') {
+                    msg = currentLang === 'ar' ? "خطأ في الصلاحيات (Rules)" : "PERMISSION DENIED";
+                    subMsg = currentLang === 'ar' ? "يجب تعديل قواعد الأمان في Firebase" : "Check Firebase Security Rules";
+                } else if(error.code === 'failed-precondition') {
+                    msg = currentLang === 'ar' ? "مطلوب فهرس (Index)" : "INDEX REQUIRED";
+                    subMsg = currentLang === 'ar' ? "افتح الـ Console واضغط على الرابط" : "Check link in Console";
+                }
+
+                list.innerHTML = `<div class="text-center text-red-500 mt-10 text-xs font-pixel">${msg}<br><span class="text-[10px] text-gray-500">${subMsg}</span></div>`;
             });
         }
 
         function closeLeaderboard() {
             document.getElementById('leaderboard-modal').classList.add('hidden');
             document.getElementById('leaderboard-modal').classList.remove('flex');
+        }
+
+        // --- CHAT SYSTEM ---
+        let chatUnsubscribe = null;
+
+        function initChat() {
+            if(chatUnsubscribe) return;
+            
+            const list = document.getElementById('chat-messages');
+            
+            chatUnsubscribe = db.collection('messages')
+                .orderBy('timestamp', 'desc')
+                .limit(50)
+                .onSnapshot(snapshot => {
+                    list.innerHTML = '';
+                    if(snapshot.empty) {
+                        list.innerHTML = '<div class="text-center text-gray-500 mt-10 font-pixel">NO MESSAGES YET</div>';
+                        return;
+                    }
+                    
+                    const docs = [];
+                    snapshot.forEach(doc => docs.push(doc));
+                    docs.reverse(); // Show newest at bottom
+
+                    docs.forEach(doc => {
+                        const data = doc.data();
+                        const isMe = state.user && data.uid === state.user.uid;
+                        const msgDiv = document.createElement('div');
+                        msgDiv.className = `flex flex-col gap-1 ${isMe ? 'items-end' : 'items-start'}`;
+                        
+                        const bubbleColor = isMe ? 'bg-bit-primary text-white border-bit-primary' : 'bg-gray-700 text-gray-200 border-gray-600';
+                        const senderName = data.name || 'UNKNOWN';
+                        const flag = data.flag || '';
+                        
+                        msgDiv.innerHTML = `
+                            ${!isMe ? `<div class="text-[10px] text-gray-500 font-pixel px-1">${flag} ${senderName}</div>` : ''}
+                            <div class="${bubbleColor} px-3 py-2 rounded-sm border-2 text-xs font-sans max-w-[85%] break-words shadow-sm relative">
+                                ${data.text}
+                            </div>
+                        `;
+                        list.appendChild(msgDiv);
+                    });
+                    list.scrollTop = list.scrollHeight;
+                });
+        }
+
+        function sendMessage() {
+            if(!state.user) return toggleAuthModal();
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(!text) return;
+
+            const flag = document.getElementById('player-flag').textContent || '🌍';
+            const name = (state.user.displayName || 'PLAYER').toUpperCase();
+
+            db.collection('messages').add({
+                text: text,
+                uid: state.user.uid,
+                name: name,
+                flag: flag,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                input.value = '';
+                playSfx('coin');
+            }).catch(e => alert(e.message));
         }
 
         // --- NAVIGATION ---
@@ -1471,6 +1607,8 @@
                 btn.classList.remove('active');
                 if(btn.dataset.target === `view-${viewId}`) btn.classList.add('active');
             });
+
+            if(viewId === 'chat') initChat();
         }
 
         // --- INIT ---
