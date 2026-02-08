@@ -144,9 +144,10 @@
         }
         .view-section.active { 
             display: flex; 
-            animation: slideIn 0.3s steps(5); 
+            animation: slideIn 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); 
+            will-change: transform, opacity;
         }
-        @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes slideIn { from { transform: translateY(15px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
         /* XP Bar */
         .pixel-progress {
@@ -185,8 +186,23 @@
         }
 
         /* Boot Animation */
-        .boot-slide-up { animation: bootSlideUp 0.8s cubic-bezier(0.7, 0, 0.3, 1) forwards; }
-        @keyframes bootSlideUp { to { transform: translateY(-100%); } }
+        .boot-finish { animation: bootFinish 0.8s cubic-bezier(0.7, 0, 0.3, 1) forwards; }
+        @keyframes bootFinish { 
+            0% { opacity: 1; transform: scale(1); filter: brightness(1); }
+            40% { opacity: 1; transform: scale(1.02); filter: brightness(20); } /* Flash Effect */
+            100% { opacity: 0; transform: scale(1.1); pointer-events: none; visibility: hidden; }
+        }
+
+        .scanlines {
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.3) 50%,
+                rgba(0,0,0,0.3)
+            );
+            background-size: 100% 4px;
+        }
     </style>
 </head>
 
@@ -194,9 +210,10 @@
 
     <!-- Boot Screen -->
     <div id="boot-screen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center text-white font-pixel text-2xl">
-        <div class="animate-pulse mb-4 text-bit-accent">INITIALIZING SYSTEM...</div>
+        <div class="absolute inset-0 scanlines pointer-events-none"></div>
+        <div id="boot-text" class="animate-pulse mb-4 text-bit-accent tracking-widest">INITIALIZING...</div>
         <div class="w-48 h-4 border-4 border-white p-1">
-            <div class="h-full bg-bit-success w-full animate-[width_1.5s_steps(10)_forwards]" style="width: 0%; transition: width 1.5s;"></div>
+            <div id="boot-bar" class="h-full bg-bit-success w-full" style="width: 0%; transition: width 2s steps(10);"></div>
         </div>
     </div>
 
@@ -1253,9 +1270,17 @@
 
         // Boot Animation
         window.onload = () => {
+            const bar = document.getElementById('boot-bar');
+            const text = document.getElementById('boot-text');
+            
+            // Start loading sequence
+            setTimeout(() => { bar.style.width = "100%"; }, 100);
+            setTimeout(() => { text.textContent = "LOADING ASSETS..."; }, 800);
+            setTimeout(() => { text.textContent = "SYSTEM READY"; text.classList.replace('text-bit-accent', 'text-green-400'); }, 1800);
+
             setTimeout(() => {
-                document.getElementById('boot-screen').classList.add('boot-slide-up');
-            }, 1500);
+                document.getElementById('boot-screen').classList.add('boot-finish');
+            }, 2200);
         };
 
     </script>
