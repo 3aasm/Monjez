@@ -203,6 +203,10 @@
             );
             background-size: 100% 4px;
         }
+
+        /* Full Screen Modal Animation */
+        .modal-full-enter { animation: modalSlideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        @keyframes modalSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     </style>
 </head>
 
@@ -241,7 +245,9 @@
                     <span id="xp-display">000</span> <i class="fas fa-star text-bit-accent text-sm"></i>
                 </div>
                 <div class="text-[10px] font-pixel text-bit-grey">LEVEL <span id="level-display">1</span></div>
-                <button onclick="toggleHistory()" class="text-[10px] text-bit-primary hover:text-white underline font-sans" data-i18n="history">السجل</button>
+                <button onclick="toggleHistory()" class="mt-1 flex items-center gap-1 bg-gray-800 border-2 border-gray-600 px-2 py-0.5 hover:border-white hover:text-white text-gray-400 text-[10px] font-pixel transition-all active:translate-y-0.5 rounded-sm">
+                    <i class="fas fa-history"></i> <span data-i18n="history">HISTORY</span>
+                </button>
             </div>
         </header>
 
@@ -308,6 +314,9 @@
 
                 <div class="flex-grow flex flex-col items-center justify-center bg-bit-dark border-4 border-black p-6 relative shadow-pixel-lg text-center h-full max-h-[400px]">
                     
+                    <!-- Stopwatch Reset Corner Button -->
+                    <button onclick="resetTimer()" id="sw-reset-corner" class="hidden absolute top-2 right-2 text-[10px] pixel-btn red px-2 py-1 z-10" data-i18n="reset_again">اعد مره اخرا</button>
+
                     <!-- Boss/Timer Visual -->
                     <div class="mb-6 h-32 flex items-center justify-center relative w-full">
                          <!-- Focus Visual -->
@@ -341,6 +350,7 @@
                     <!-- Focus Presets -->
                     <div id="focus-presets" class="flex gap-2 mt-6">
                         <button onclick="setTimer(25)" class="pixel-btn text-xs py-1 px-2">25m</button>
+                        <button onclick="customTimer()" class="pixel-btn text-xs py-1 px-2" data-i18n="custom">تخصيص</button>
                         <button onclick="setTimer(15)" class="pixel-btn text-xs py-1 px-2">15m</button>
                         <button onclick="setTimer(5)" class="pixel-btn text-xs py-1 px-2">5m</button>
                     </div>
@@ -455,18 +465,33 @@
         </div>
 
         <!-- NOTE MODAL (Add/Edit) -->
-        <div id="note-modal" class="fixed inset-0 z-50 pixel-modal-bg hidden items-center justify-center p-4 backdrop-blur-sm">
-            <div class="bg-bit-bg border-4 border-white p-4 w-full max-w-sm shadow-2xl relative flex flex-col gap-3">
-                <div class="bg-bit-dark border-2 border-black p-1 text-center font-display text-bit-accent mb-2" data-i18n="item_details">ITEM DETAILS</div>
+        <div id="note-modal" class="fixed inset-0 z-[60] bg-bit-bg hidden flex-col modal-full-enter">
+            <!-- Header -->
+            <div class="bg-bit-dark border-b-4 border-black p-4 flex items-center justify-between shrink-0 shadow-pixel z-10">
+                <button onclick="closeNoteModal()" class="text-white hover:text-bit-accent text-xl active:scale-90 transition-transform">
+                    <i class="fas fa-arrow-left rtl:rotate-180"></i>
+                </button>
+                <div class="font-display text-xl text-bit-accent tracking-wider" data-i18n="item_details">ITEM DETAILS</div>
+                <button onclick="saveNote()" class="text-bit-success hover:text-white text-xl active:scale-90 transition-transform">
+                    <i class="fas fa-save"></i>
+                </button>
+            </div>
                 
+            <!-- Content -->
+            <div class="flex-grow p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
                 <input type="hidden" id="note-id">
-                <input type="text" id="note-title" placeholder="ITEM NAME" class="pixel-input text-lg font-bold text-white bg-bit-dark" data-i18n="item_name_ph">
-                <textarea id="note-body" placeholder="DESCRIPTION..." class="pixel-input h-32 resize-none bg-bit-dark text-sm leading-relaxed" data-i18n="desc_ph"></textarea>
                 
-                <div class="flex gap-2 mt-2">
-                    <button onclick="saveNote()" class="flex-1 pixel-btn green py-2" data-i18n="save">SAVE</button>
-                    <button onclick="closeNoteModal()" class="flex-1 pixel-btn red py-2" data-i18n="discard">DISCARD</button>
+                <div class="flex flex-col gap-2">
+                    <label class="text-[10px] font-pixel text-bit-grey uppercase tracking-widest">Title</label>
+                    <input type="text" id="note-title" placeholder="ITEM NAME" class="w-full bg-transparent border-b-4 border-gray-700 text-2xl font-display text-white focus:border-bit-accent focus:outline-none px-2 py-1 transition-colors" data-i18n="item_name_ph">
                 </div>
+
+                <div class="flex flex-col gap-2 flex-grow">
+                    <label class="text-[10px] font-pixel text-bit-grey uppercase tracking-widest">Description</label>
+                    <textarea id="note-body" placeholder="DESCRIPTION..." class="w-full flex-grow bg-bit-dark border-4 border-black text-white p-4 font-sans text-lg leading-relaxed focus:border-bit-accent focus:outline-none resize-none shadow-inner" data-i18n="desc_ph"></textarea>
+                </div>
+
+                <button onclick="closeNoteModal()" class="pixel-btn red py-3 w-full shrink-0" data-i18n="discard">DISCARD CHANGES</button>
             </div>
         </div>
 
@@ -547,7 +572,9 @@
                 email_ph: "البريد الإلكتروني",
                 pass_ph: "كلمة المرور",
                 name_ph: "اسم اللاعب",
-                editing: "جاري التعديل..."
+                editing: "جاري التعديل...",
+                custom: "تخصيص",
+                reset_again: "اعد مره اخرا"
             },
             en: {
                 history: "HISTORY",
@@ -586,7 +613,9 @@
                 email_ph: "EMAIL",
                 pass_ph: "PASSWORD",
                 name_ph: "PLAYER NAME",
-                editing: "EDITING..."
+                editing: "EDITING...",
+                custom: "CUSTOM",
+                reset_again: "RESET AGAIN"
             }
         };
 
@@ -1008,6 +1037,7 @@
             const secBtn = document.getElementById('timer-sec-btn');
             const lapsContainer = document.getElementById('laps-container');
             const presets = document.getElementById('focus-presets');
+            const swReset = document.getElementById('sw-reset-corner');
 
             if(mode === 'focus') {
                 btnFocus.classList.replace('grey', 'bg-bit-primary');
@@ -1017,6 +1047,7 @@
                 lapsContainer.classList.add('hidden');
                 presets.classList.remove('hidden');
                 state.timer.timeLeft = state.timer.initial;
+                if(swReset) swReset.classList.add('hidden');
                 updateTimerDisplay();
             } else {
                 btnStop.classList.replace('grey', 'bg-bit-primary');
@@ -1026,6 +1057,7 @@
                 lapsContainer.classList.remove('hidden');
                 presets.classList.add('hidden');
                 document.getElementById('timer-display').textContent = "00:00";
+                if(swReset) swReset.classList.remove('hidden');
             }
             playSfx('jump');
         }
@@ -1035,6 +1067,11 @@
             state.timer.initial = mins * 60;
             state.timer.timeLeft = state.timer.initial;
             resetTimer();
+        }
+
+        function customTimer() {
+            const mins = prompt(currentLang === 'ar' ? "أدخل عدد الدقائق:" : "Enter minutes:");
+            if(mins && !isNaN(mins) && mins > 0) setTimer(parseInt(mins));
         }
 
         function toggleTimer() {
@@ -1231,8 +1268,20 @@
                 
                 state.history.forEach(h => {
                     const div = document.createElement('div');
-                    div.className = "bg-black/30 p-2 text-xs font-pixel text-green-400 border-b border-white/10";
-                    div.innerHTML = `> ${h.text} <span class="text-gray-500 block text-[8px]">${h.date}</span>`;
+                    const isQuest = h.type === 'quest';
+                    const borderColor = isQuest ? 'border-yellow-500' : 'border-blue-500';
+                    const icon = isQuest ? '<i class="fas fa-check-circle text-yellow-500"></i>' : '<i class="fas fa-bolt text-blue-500"></i>';
+                    const titleColor = isQuest ? 'text-yellow-400' : 'text-blue-400';
+
+                    div.className = `bg-black border-l-4 ${borderColor} p-2 mb-2 font-pixel text-xs flex flex-col gap-1 shadow-sm relative overflow-hidden`;
+                    div.innerHTML = `
+                        <div class="absolute right-0 top-0 p-1 opacity-10 pointer-events-none"><i class="fas ${isQuest ? 'fa-scroll' : 'fa-stopwatch'} text-4xl"></i></div>
+                        <div class="flex justify-between items-center z-10">
+                            <div class="flex items-center gap-2 ${titleColor} font-bold uppercase tracking-wider">${icon} ${h.type || 'SYSTEM'}</div>
+                            <span class="text-[8px] text-gray-500 font-sans bg-gray-900 px-1 rounded">${h.date}</span>
+                        </div>
+                        <div class="text-gray-300 pl-5 leading-tight z-10">${h.text}</div>
+                    `;
                     list.appendChild(div);
                 });
                 
