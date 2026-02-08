@@ -231,7 +231,7 @@
                     <img id="avatar-img" src="https://via.placeholder.com/100" class="w-full h-full object-cover rendering-pixelated">
                 </div>
                 <div class="flex flex-col">
-                    <h1 class="text-lg font-display text-bit-accent leading-none mb-1 truncate max-w-[120px]" id="player-name">PLAYER 1</h1>
+                    <h1 class="text-lg font-display text-bit-accent leading-none mb-1 truncate max-w-[120px] flex items-center gap-2"><span id="player-flag"></span> <span id="player-name">PLAYER 1</span></h1>
                     <div class="flex gap-1" id="hearts-container">
                         <i class="fas fa-heart text-bit-danger text-xs animate-pulse"></i>
                         <i class="fas fa-heart text-bit-danger text-xs animate-pulse" style="animation-delay: 0.2s"></i>
@@ -258,7 +258,8 @@
             <div id="view-quests" class="view-section active p-4 overflow-y-auto custom-scrollbar pb-24">
                 
                 <!-- Stats Banner -->
-                <div class="bg-bit-primary border-4 border-black p-3 text-center mb-4 shadow-pixel">
+                <div onclick="openLeaderboard()" class="bg-bit-primary border-4 border-black p-3 text-center mb-4 shadow-pixel cursor-pointer hover:brightness-110 transition-all active:translate-y-1 group relative">
+                    <div class="absolute top-1 right-1 text-[8px] bg-black/30 px-1 rounded text-white/70 group-hover:text-white"><i class="fas fa-trophy"></i> TOP 30</div>
                     <h2 class="text-xl font-display text-white mb-1" data-i18n="adventures">مغامرات اليوم</h2>
                     <div class="pixel-progress mb-1">
                         <div id="xp-bar" class="pixel-progress-bar"></div>
@@ -427,6 +428,15 @@
                         <input type="email" id="auth-email" placeholder="EMAIL" class="pixel-input" data-i18n="email_ph">
                         <input type="password" id="auth-pass" placeholder="PASSWORD" class="pixel-input" data-i18n="pass_ph">
                         
+                        <!-- Country Selector -->
+                        <div id="auth-country-select" class="hidden flex-col gap-1">
+                            <label class="text-xs text-gray-400" data-i18n="select_country">SELECT COUNTRY:</label>
+                            <div class="flex flex-wrap gap-2 justify-center" id="country-options">
+                                <!-- Populated by JS -->
+                            </div>
+                            <input type="hidden" id="selected-country" value="global">
+                        </div>
+
                         <div id="auth-photo-select" class="hidden">
                             <label class="text-xs text-gray-400 mb-1 block" data-i18n="select_avatar">SELECT AVATAR:</label>
                             <input type="file" id="auth-file" accept="image/*" class="text-xs text-gray-400" onchange="handleFileSelect(this)">
@@ -452,6 +462,12 @@
                             <p class="text-xs text-gray-500 font-pixel" id="profile-email-lg">EMAIL</p>
                         </div>
                         
+                        <!-- Profile Country Selector -->
+                        <div class="w-full flex flex-col items-center gap-1">
+                            <label class="text-[10px] text-gray-500 font-pixel" data-i18n="select_country">SELECT COUNTRY</label>
+                            <div class="flex flex-wrap gap-2 justify-center" id="profile-country-options"></div>
+                        </div>
+
                         <!-- Language Switcher -->
                         <div class="flex gap-2 w-full">
                             <button onclick="setLanguage('ar')" class="flex-1 pixel-btn grey text-xs py-2">العربية</button>
@@ -495,6 +511,25 @@
             </div>
         </div>
 
+        <!-- LEADERBOARD MODAL -->
+        <div id="leaderboard-modal" class="fixed inset-0 z-50 pixel-modal-bg hidden items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-bit-bg border-4 border-white p-4 w-full max-w-sm shadow-2xl relative flex flex-col h-[70vh]">
+                <div class="flex justify-between items-center mb-4 border-b-2 border-dashed border-gray-600 pb-2">
+                    <h3 class="text-xl font-display text-bit-accent"><i class="fas fa-trophy text-yellow-400 mr-1"></i> <span data-i18n="leaderboard">TOP PLAYERS</span></h3>
+                    <button onclick="closeLeaderboard()" class="text-red-500 font-bold">X</button>
+                </div>
+                
+                <div class="flex justify-between text-[10px] text-gray-500 px-2 mb-1 font-pixel">
+                    <span data-i18n="rank">RANK</span>
+                    <span data-i18n="score">LEVEL / XP</span>
+                </div>
+                <div id="leaderboard-list" class="flex-grow overflow-y-auto custom-scrollbar flex flex-col gap-2 p-1">
+                    <!-- Leaderboard items -->
+                    <div class="text-center text-gray-500 mt-10 animate-pulse">LOADING...</div>
+                </div>
+            </div>
+        </div>
+
         <!-- HISTORY MODAL -->
         <div id="history-modal" class="fixed inset-0 z-50 pixel-modal-bg hidden items-center justify-center p-4 backdrop-blur-sm">
             <div class="bg-bit-bg border-4 border-white p-4 w-full max-w-sm shadow-2xl relative flex flex-col h-[70vh]">
@@ -518,7 +553,6 @@
     <audio id="sfx-jump" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
     <audio id="sfx-hit" src="https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3"></audio>
     <audio id="sfx-win" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
-
     <script>
         // --- CONFIG ---
         const firebaseConfig = { 
@@ -574,7 +608,11 @@
                 name_ph: "اسم اللاعب",
                 editing: "جاري التعديل...",
                 custom: "تخصيص",
-                reset_again: "اعد مره اخرا"
+                reset_again: "اعد مره اخرا",
+                select_country: "اختر الدولة:",
+                leaderboard: "أفضل اللاعبين",
+                rank: "الترتيب",
+                score: "المستوى / XP"
             },
             en: {
                 history: "HISTORY",
@@ -615,7 +653,11 @@
                 name_ph: "PLAYER NAME",
                 editing: "EDITING...",
                 custom: "CUSTOM",
-                reset_again: "RESET AGAIN"
+                reset_again: "RESET AGAIN",
+                select_country: "SELECT COUNTRY:",
+                leaderboard: "TOP PLAYERS",
+                rank: "RANK",
+                score: "LEVEL / XP"
             }
         };
 
@@ -705,6 +747,17 @@
             high: { border: 'border-red-500', icon: 'text-red-500' }
         };
 
+        // --- COUNTRIES ---
+        const countries = [
+            { code: 'sa', flag: '🇸🇦' },
+            { code: 'ae', flag: '🇦🇪' },
+            { code: 'kw', flag: '🇰🇼' },
+            { code: 'qa', flag: '🇶🇦' },
+            { code: 'bh', flag: '🇧🇭' },
+            { code: 'om', flag: '🇴🇲' },
+            { code: 'global', flag: '🌍' }
+        ];
+
         // --- AUDIO ---
         function playSfx(id) {
             const audio = document.getElementById(`sfx-${id}`);
@@ -728,6 +781,7 @@
             const loginFields = document.getElementById('login-fields');
             const profileView = document.getElementById('profile-view');
             const title = document.querySelector('#auth-form-content h2');
+            const flagDisplay = document.getElementById('player-flag');
 
             if(u) {
                 avatar.src = u.photoURL || 'https://via.placeholder.com/100';
@@ -749,10 +803,19 @@
                         avatar.src = doc.data().photoBase64;
                         document.getElementById('profile-img-lg').src = doc.data().photoBase64;
                     }
+                    // Set Flag
+                    let currentCountry = 'global';
+                    if(doc.exists && doc.data().country) {
+                        currentCountry = doc.data().country;
+                        const c = countries.find(x => x.code === currentCountry);
+                        flagDisplay.textContent = c ? c.flag : '🌍';
+                    }
+                    renderProfileCountryOptions(currentCountry);
                 });
             } else {
                 avatar.src = 'https://via.placeholder.com/100';
                 name.textContent = "PLAYER 1";
+                flagDisplay.textContent = "";
                 loginFields.classList.remove('hidden');
                 profileView.classList.add('hidden');
                 profileView.classList.remove('flex');
@@ -771,15 +834,62 @@
             isLoginMode = !isLoginMode;
             const nameInput = document.getElementById('auth-name');
             const photoInput = document.getElementById('auth-photo-select');
+            const countryInput = document.getElementById('auth-country-select');
 
             if(isLoginMode) {
                 nameInput.classList.add('hidden');
                 photoInput.classList.add('hidden');
+                countryInput.classList.add('hidden');
             } else {
                 nameInput.classList.remove('hidden');
                 photoInput.classList.remove('hidden');
+                countryInput.classList.remove('hidden');
+                renderCountryOptions();
             }
             updateAuthUI();
+        }
+
+        function renderCountryOptions() {
+            const container = document.getElementById('country-options');
+            container.innerHTML = '';
+            countries.forEach(c => {
+                const btn = document.createElement('button');
+                btn.className = "w-8 h-8 bg-bit-dark border-2 border-gray-600 hover:border-white flex items-center justify-center text-lg transition-all";
+                btn.textContent = c.flag;
+                btn.onclick = () => selectCountry(c.code, btn);
+                container.appendChild(btn);
+            });
+            // Select global by default
+            selectCountry('global', container.lastChild);
+        }
+
+        function selectCountry(code, btn) {
+            document.getElementById('selected-country').value = code;
+            document.querySelectorAll('#country-options button').forEach(b => b.classList.remove('border-bit-accent', 'bg-gray-700'));
+            btn.classList.add('border-bit-accent', 'bg-gray-700');
+        }
+
+        function renderProfileCountryOptions(currentCode) {
+            const container = document.getElementById('profile-country-options');
+            if(!container) return;
+            container.innerHTML = '';
+            countries.forEach(c => {
+                const btn = document.createElement('button');
+                const isActive = c.code === currentCode;
+                btn.className = `w-8 h-8 bg-bit-dark border-2 ${isActive ? 'border-bit-accent bg-gray-700' : 'border-gray-600'} hover:border-white flex items-center justify-center text-lg transition-all`;
+                btn.textContent = c.flag;
+                btn.onclick = () => updateProfileCountry(c.code);
+                container.appendChild(btn);
+            });
+        }
+
+        function updateProfileCountry(code) {
+            if(!state.user) return;
+            const c = countries.find(x => x.code === code);
+            document.getElementById('player-flag').textContent = c ? c.flag : '🌍';
+            renderProfileCountryOptions(code);
+            db.collection('users').doc(state.user.uid).set({ country: code }, { merge: true });
+            playSfx('coin');
         }
 
         function handleFileSelect(input) {
@@ -798,6 +908,7 @@
             const email = document.getElementById('auth-email').value;
             const pass = document.getElementById('auth-pass').value;
             const name = document.getElementById('auth-name').value;
+            const country = document.getElementById('selected-country').value;
 
             if(!email || !pass) return alert("MISSING DATA!");
 
@@ -812,6 +923,7 @@
                         db.collection('users').doc(cred.user.uid).set({
                             email: email,
                             photoBase64: selectedAvatarBase64,
+                            country: country,
                             xp: 0,
                             createdAt: new Date()
                         });
@@ -1297,6 +1409,56 @@
             state.history = [];
             saveData();
             toggleHistory(); // Refresh
+        }
+
+        // --- LEADERBOARD ---
+        function openLeaderboard() {
+            const modal = document.getElementById('leaderboard-modal');
+            const list = document.getElementById('leaderboard-list');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            playSfx('jump');
+
+            // Fetch Top 30
+            db.collection('users').orderBy('xp', 'desc').limit(30).get().then(snapshot => {
+                list.innerHTML = '';
+                if(snapshot.empty) {
+                    list.innerHTML = '<div class="text-center text-gray-500 mt-10">NO PLAYERS YET</div>';
+                    return;
+                }
+
+                let rank = 1;
+                snapshot.forEach(doc => {
+                    const d = doc.data();
+                    const c = countries.find(x => x.code === d.country) || { flag: '🌍' };
+                    const level = Math.floor((d.xp || 0) / 100) + 1;
+                    
+                    const div = document.createElement('div');
+                    div.className = `flex items-center gap-2 p-2 border-b border-gray-800 ${rank <= 3 ? 'bg-white/5' : ''}`;
+                    
+                    let rankBadge = `<span class="w-6 text-center font-pixel text-gray-500">#${rank}</span>`;
+                    if(rank === 1) rankBadge = `<span class="w-6 text-center"><i class="fas fa-crown text-yellow-400"></i></span>`;
+                    if(rank === 2) rankBadge = `<span class="w-6 text-center"><i class="fas fa-crown text-gray-300"></i></span>`;
+                    if(rank === 3) rankBadge = `<span class="w-6 text-center"><i class="fas fa-crown text-orange-400"></i></span>`;
+
+                    div.innerHTML = `
+                        ${rankBadge}
+                        <div class="text-xl">${c.flag}</div>
+                        <div class="flex-grow font-sans text-sm text-white truncate">${d.email ? d.email.split('@')[0] : 'PLAYER'}</div>
+                        <div class="text-right font-pixel text-bit-accent text-xs">
+                            <div>LVL ${level}</div>
+                            <div class="text-gray-500">${d.xp || 0} XP</div>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                    rank++;
+                });
+            });
+        }
+
+        function closeLeaderboard() {
+            document.getElementById('leaderboard-modal').classList.add('hidden');
+            document.getElementById('leaderboard-modal').classList.remove('flex');
         }
 
         // --- NAVIGATION ---
