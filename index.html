@@ -397,9 +397,46 @@
                     <div class="text-center text-gray-500 text-xs mt-4">CONNECTING...</div>
                 </div>
 
-                <div class="flex gap-2">
-                    <input type="text" id="chat-input" class="flex-grow pixel-input text-sm" placeholder="..." data-i18n="say_something" onkeypress="if(event.key === 'Enter') sendMessage()">
-                    <button onclick="sendMessage()" class="pixel-btn green w-12 flex items-center justify-center text-black"><i class="fas fa-paper-plane"></i></button>
+                <div class="relative min-h-[3rem]">
+                    <!-- Standard Controls -->
+                    <div id="chat-controls" class="flex gap-2 w-full h-full">
+                        <button id="chat-mic-btn" onclick="startRecording()" class="pixel-btn grey w-10 flex items-center justify-center shrink-0 text-white"><i class="fas fa-microphone"></i></button>
+                        <button id="chat-cancel-btn" onclick="cancelEditMessage()" class="hidden pixel-btn red w-10 flex items-center justify-center shrink-0 text-white"><i class="fas fa-times"></i></button>
+                        <input type="text" id="chat-input" class="flex-grow pixel-input text-sm" placeholder="..." data-i18n="say_something" onkeypress="if(event.key === 'Enter') sendMessage()">
+                        <button id="chat-send-btn" onclick="sendMessage()" class="pixel-btn green w-12 flex items-center justify-center text-black shrink-0"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+
+                    <!-- Recording UI Overlay -->
+                    <div id="recording-overlay" class="hidden absolute inset-0 bg-bit-dark border-4 border-bit-danger z-20 flex items-center justify-between px-3 shadow-pixel">
+                        <div class="flex items-center gap-3 text-bit-danger font-pixel animate-pulse">
+                            <i class="fas fa-circle text-xs"></i>
+                            <span id="rec-timer" class="text-lg tracking-widest">00:00</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="cancelRecording()" class="pixel-btn grey w-10 h-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
+                            <button onclick="finishRecording()" class="pixel-btn green w-10 h-8 flex items-center justify-center text-black"><i class="fas fa-check"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Delete Confirmation Overlay -->
+                    <div id="delete-confirm-overlay" class="hidden absolute inset-0 bg-bit-dark border-4 border-bit-danger z-20 flex items-center justify-between px-3 shadow-pixel">
+                        <div class="text-white font-pixel text-sm flex items-center gap-2">
+                            <i class="fas fa-exclamation-triangle text-bit-danger"></i>
+                            <span data-i18n="delete_confirm">Delete message?</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="cancelDeleteMessage()" class="pixel-btn grey px-3 py-1 text-xs" data-i18n="discard">CANCEL</button>
+                            <button onclick="confirmDeleteMessage()" class="pixel-btn red px-3 py-1 text-xs" data-i18n="delete">DELETE</button>
+                        </div>
+                    </div>
+
+                    <!-- Message Options Overlay (Edit/Delete) -->
+                    <div id="message-options-overlay" class="hidden absolute inset-0 bg-bit-dark border-4 border-bit-primary z-20 flex items-center justify-center gap-2 px-3 shadow-pixel">
+                        <button onclick="triggerEditMessage()" class="pixel-btn blue flex-1 py-1 text-xs flex items-center justify-center gap-2 h-8"><i class="fas fa-pen"></i> <span data-i18n="edit">EDIT</span></button>
+                        <button onclick="triggerDeleteMessage()" class="pixel-btn red flex-1 py-1 text-xs flex items-center justify-center gap-2 h-8"><i class="fas fa-trash"></i> <span data-i18n="delete">DELETE</span></button>
+                        <button onclick="cancelMessageOptions()" class="pixel-btn grey w-10 h-8 flex items-center justify-center shrink-0"><i class="fas fa-times"></i></button>
+                    </div>
+
                 </div>
             </div>
 
@@ -582,6 +619,24 @@
             </div>
         </div>
 
+        <!-- VIEW PLAYER PROFILE MODAL -->
+        <div id="player-modal" class="fixed inset-0 z-[70] pixel-modal-bg hidden items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-bit-bg border-4 border-white p-6 w-full max-w-sm shadow-2xl relative flex flex-col items-center gap-4">
+                <button onclick="closePlayerProfile()" class="absolute top-2 left-3 text-red-500 hover:text-red-400 font-bold text-xl">X</button>
+                
+                <div class="w-24 h-24 border-4 border-white relative shadow-pixel">
+                    <img id="view-player-img" src="" class="w-full h-full object-cover bg-black rendering-pixelated">
+                </div>
+                
+                <div class="text-center w-full">
+                    <h2 id="view-player-name" class="text-2xl font-display text-bit-accent mb-2 truncate">PLAYER</h2>
+                    <div class="bg-bit-dark border-2 border-gray-600 p-2 w-full">
+                        <div class="text-white font-pixel text-xl"><span id="view-player-xp" class="text-bit-success">0</span> XP</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- SOUNDS -->
@@ -657,7 +712,10 @@
                 share_stats: "شارك إنجازي",
                 login_to_chat: "سجل دخولك للدردشة",
                 sound_on: "الصوت: مفعل",
-                sound_off: "الصوت: معطل"
+                sound_off: "الصوت: معطل",
+                chat_deleted: "تم حذف الدردشة",
+                delete_confirm: "هل أنت متأكد من الحذف؟",
+                edit: "تعديل"
             },
             en: {
                 history: "HISTORY",
@@ -711,7 +769,10 @@
                 share_stats: "SHARE STATS",
                 login_to_chat: "LOGIN TO CHAT",
                 sound_on: "SOUND: ON",
-                sound_off: "SOUND: OFF"
+                sound_off: "SOUND: OFF",
+                chat_deleted: "Chat deleted",
+                delete_confirm: "Delete message?",
+                edit: "EDIT"
             }
         };
 
@@ -793,7 +854,9 @@
                 swStartTime: 0,
                 swElapsed: 0
             },
-            editingQuestId: null
+            editingQuestId: null,
+            editingMessageId: null,
+            selectedMessageId: null
         };
 
         const priorityColors = {
@@ -1497,6 +1560,7 @@
                 let rank = 1;
                 snapshot.forEach(doc => {
                     const d = doc.data();
+                    const isMe = state.user && doc.id === state.user.uid;
                     const c = countries.find(x => x.code === d.country) || { flag: '🌍' };
                     const level = Math.floor((d.xp || 0) / 100) + 1;
                     const playerName = d.name || (d.email ? d.email.split('@')[0] : 'PLAYER');
@@ -1525,7 +1589,7 @@
                     }
 
                     div.innerHTML = `
-                        <div class="relative w-8 flex justify-center shrink-0 mt-1">
+                        <div class="relative w-8 flex justify-center shrink-0 mt-1 ${isMe ? 'scale-110' : ''}">
                             ${crownIcon}
                             <div class="w-6 h-6 border-2 ${borderClass} bg-black flex items-center justify-center font-pixel text-xs ${textClass}">${rank}</div>
                         </div>
@@ -1536,6 +1600,10 @@
                             <div class="text-gray-500">${d.xp || 0} XP</div>
                         </div>
                     `;
+                    
+                    if(isMe) {
+                        div.className += " bg-bit-primary/20 border-l-4 border-l-bit-primary";
+                    }
                     list.appendChild(div);
                     rank++;
                 });
@@ -1670,16 +1738,35 @@
                     const isMe = state.user && msg.uid === state.user.uid;
                     const c = countries.find(x => x.code === msg.country) || { flag: '🌍' };
                     const photoSrc = msg.photo || 'https://via.placeholder.com/100';
+                    const isDeleted = msg.deleted;
                     
                     div.className = `flex flex-col gap-1 mb-2 ${isMe ? 'items-end' : 'items-start'}`;
+                    
+                    let contentHtml = isDeleted 
+                        ? `<span class="text-gray-500 italic text-[10px]">${translations[currentLang].chat_deleted}</span>` 
+                        : (msg.type === 'audio' ? `<audio controls src="${msg.audio}" class="h-8 w-48"></audio>` : msg.text);
+
+                    let actionsHtml = (isMe && !isDeleted) ? `
+                        <div class="absolute top-1 right-1 z-10">
+                            <button onclick="toggleMessageActions(event, '${msg.id}')" class="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-white rounded-sm hover:bg-black/30 opacity-50 group-hover:opacity-100">
+                                <i class="fas fa-ellipsis-v text-xs"></i>
+                            </button>
+                            <div id="actions-${msg.id}" class="hidden absolute right-0 top-8 bg-black border-2 border-gray-700 rounded-md shadow-lg flex flex-col text-xs w-24">
+                                ${msg.type !== 'audio' ? `<button onclick="editMessage('${msg.id}')" class="px-3 py-2 text-left text-blue-400 hover:bg-gray-800 w-full">Edit</button>` : ''}
+                                <button onclick="requestDeleteMessage('${msg.id}')" class="px-3 py-2 text-left text-red-400 hover:bg-gray-800 w-full">Delete</button>
+                            </div>
+                        </div>
+                    ` : '';
+
                     div.innerHTML = `
                         <div class="flex items-center gap-1 text-[10px] text-gray-500 font-pixel">
-                            <img src="${photoSrc}" class="w-6 h-6 border-2 border-gray-600 object-cover bg-black rendering-pixelated">
+                            <img src="${photoSrc}" onclick="openPlayerProfile('${msg.uid}')" class="w-6 h-6 border-2 border-gray-600 object-cover bg-black rendering-pixelated cursor-pointer hover:border-white transition-colors">
                             <span>${c.flag}</span>
                             <span class="${isMe ? 'text-bit-success' : 'text-bit-accent'}">${msg.name}</span>
                         </div>
-                        <div class="bg-bit-dark border-2 ${isMe ? 'border-bit-success' : 'border-gray-600'} p-2 text-xs text-white max-w-[80%] break-words relative shadow-sm">
-                            ${msg.text}
+                        <div class="bg-bit-dark border-2 ${isMe ? 'border-bit-success' : 'border-gray-600'} p-2 text-xs text-white max-w-[80%] break-words relative shadow-sm group">
+                            ${contentHtml}
+                            ${actionsHtml}
                         </div>
                     `;
                     list.appendChild(div);
@@ -1687,12 +1774,37 @@
                 list.scrollTop = list.scrollHeight;
             };
 
+            window.toggleMessageActions = (event, id) => {
+                state.selectedMessageId = id;
+                document.getElementById('chat-controls').classList.add('hidden');
+                document.getElementById('message-options-overlay').classList.remove('hidden');
+                document.getElementById('message-options-overlay').classList.add('flex');
+                playSfx('jump');
+            };
+
+            window.triggerEditMessage = () => {
+                if(state.selectedMessageId) editMessage(state.selectedMessageId);
+                cancelMessageOptions();
+            };
+
+            window.triggerDeleteMessage = () => {
+                if(state.selectedMessageId) requestDeleteMessage(state.selectedMessageId);
+                // requestDeleteMessage handles UI switching
+            };
+
+            window.cancelMessageOptions = () => {
+                state.selectedMessageId = null;
+                document.getElementById('message-options-overlay').classList.add('hidden');
+                document.getElementById('message-options-overlay').classList.remove('flex');
+                document.getElementById('chat-controls').classList.remove('hidden');
+            };
+
             chatUnsubscribe = db.collection('global_chat')
                 .orderBy('timestamp', 'desc')
                 .limit(50)
                 .onSnapshot(snapshot => {
                     chatData = [];
-                    snapshot.forEach(doc => chatData.push(doc.data()));
+                    snapshot.forEach(doc => chatData.push({ id: doc.id, ...doc.data() }));
                     renderChat();
                 });
             
@@ -1706,6 +1818,17 @@
             const input = document.getElementById('chat-input');
             const text = customText || input.value.trim();
             if(!text) return;
+
+            if (state.editingMessageId) {
+                db.collection('global_chat').doc(state.editingMessageId).update({
+                    text: text,
+                    isEdited: true
+                }).then(() => {
+                    cancelEditMessage();
+                    playSfx('coin');
+                });
+                return;
+            }
 
             db.collection('users').doc(state.user.uid).get().then(doc => {
                 const userData = doc.data() || {};
@@ -1732,6 +1855,196 @@
             const level = Math.floor(state.xp / 100) + 1;
             const msg = `🏆 I reached LEVEL ${level} with ${state.xp} XP!`;
             sendMessage(msg);
+        }
+
+        // --- CHAT ACTIONS (EDIT/DELETE) ---
+        function requestDeleteMessage(id) {
+            state.deletingMessageId = id;
+            document.getElementById('chat-controls').classList.add('hidden');
+            document.getElementById('recording-overlay').classList.add('hidden');
+            document.getElementById('message-options-overlay').classList.add('hidden');
+            document.getElementById('message-options-overlay').classList.remove('flex');
+            document.getElementById('delete-confirm-overlay').classList.remove('hidden');
+            document.getElementById('delete-confirm-overlay').classList.add('flex');
+        }
+
+        function cancelDeleteMessage() {
+            state.deletingMessageId = null;
+            document.getElementById('chat-controls').classList.remove('hidden');
+            document.getElementById('delete-confirm-overlay').classList.add('hidden');
+            document.getElementById('delete-confirm-overlay').classList.remove('flex');
+        }
+
+        function confirmDeleteMessage() {
+            if (state.deletingMessageId) {
+                db.collection('global_chat').doc(state.deletingMessageId).update({
+                    deleted: true,
+                    text: 'deleted',
+                    audio: null,
+                });
+                playSfx('hit');
+            }
+            cancelDeleteMessage();
+        }
+
+        function editMessage(id) {
+            const msg = chatData.find(m => m.id === id);
+            if(!msg || msg.deleted || msg.type === 'audio') return;
+            
+            // Hide other overlays
+            document.getElementById('chat-controls').classList.remove('hidden'); // Ensure controls are visible
+            document.getElementById('recording-overlay').classList.add('hidden');
+            document.getElementById('delete-confirm-overlay').classList.add('hidden');
+            document.getElementById('delete-confirm-overlay').classList.remove('flex');
+            document.getElementById('message-options-overlay').classList.add('hidden');
+            document.getElementById('message-options-overlay').classList.remove('flex');
+
+            state.editingMessageId = id;
+            const input = document.getElementById('chat-input');
+            input.value = msg.text;
+            input.focus();
+            
+            document.getElementById('chat-mic-btn').classList.add('hidden');
+            document.getElementById('chat-cancel-btn').classList.remove('hidden');
+            document.getElementById('chat-send-btn').classList.replace('green', 'blue');
+        }
+
+        function cancelEditMessage() {
+            state.editingMessageId = null;
+            document.getElementById('chat-input').value = '';
+            document.getElementById('chat-mic-btn').classList.remove('hidden');
+            document.getElementById('chat-cancel-btn').classList.add('hidden');
+            document.getElementById('chat-send-btn').classList.replace('blue', 'green');
+        }
+
+
+        // --- AUDIO RECORDING ---
+        let mediaRecorder;
+        let audioChunks = [];
+        let recInterval;
+        let recStartTime;
+
+        function startRecording() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                return alert("Audio recording not supported on this device.");
+            }
+
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    mediaRecorder.start();
+
+                    // UI
+                    document.getElementById('chat-controls').classList.add('hidden');
+                    document.getElementById('recording-overlay').classList.remove('hidden');
+                    document.getElementById('recording-overlay').classList.add('flex');
+                    
+                    // Timer
+                    recStartTime = Date.now();
+                    document.getElementById('rec-timer').textContent = "00:00";
+                    recInterval = setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - recStartTime) / 1000);
+                        const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                        const s = (elapsed % 60).toString().padStart(2, '0');
+                        document.getElementById('rec-timer').textContent = `${m}:${s}`;
+                        
+                        // Limit to 15 seconds to avoid Firestore limits
+                        if(elapsed >= 15) finishRecording();
+                    }, 1000);
+
+                    mediaRecorder.addEventListener("dataavailable", event => {
+                        audioChunks.push(event.data);
+                    });
+                })
+                .catch(err => {
+                    console.error("Mic Error:", err);
+                    alert("Microphone access denied.");
+                });
+        }
+
+        function cancelRecording() {
+            if(mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+            clearInterval(recInterval);
+            document.getElementById('chat-controls').classList.remove('hidden');
+            document.getElementById('recording-overlay').classList.add('hidden');
+            document.getElementById('recording-overlay').classList.remove('flex');
+            audioChunks = [];
+        }
+
+        function finishRecording() {
+            if(!mediaRecorder || mediaRecorder.state === 'inactive') return;
+            mediaRecorder.stop();
+            clearInterval(recInterval);
+            document.getElementById('chat-controls').classList.remove('hidden');
+            document.getElementById('recording-overlay').classList.add('hidden');
+            document.getElementById('recording-overlay').classList.remove('flex');
+
+            mediaRecorder.addEventListener("stop", () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = () => {
+                    sendAudioMessage(reader.result);
+                };
+            });
+        }
+
+        function sendAudioMessage(base64) {
+            if(!state.user) return alert(translations[currentLang].login_to_chat);
+            
+            db.collection('users').doc(state.user.uid).get().then(doc => {
+                const userData = doc.data() || {};
+                const name = userData.name || state.user.displayName || 'PLAYER';
+                const country = userData.country || 'global';
+                const photo = userData.photoBase64 || state.user.photoURL || '';
+
+                db.collection('global_chat').add({
+                    type: 'audio',
+                    audio: base64,
+                    uid: state.user.uid,
+                    name: name,
+                    country: country,
+                    photo: photo,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                playSfx('coin');
+            });
+        }
+
+        // --- VIEW PLAYER PROFILE ---
+        function openPlayerProfile(uid) {
+            if(!uid) return;
+            const modal = document.getElementById('player-modal');
+            const img = document.getElementById('view-player-img');
+            const name = document.getElementById('view-player-name');
+            const xp = document.getElementById('view-player-xp');
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            playSfx('jump');
+
+            // Reset / Loading
+            name.textContent = "LOADING...";
+            xp.textContent = "...";
+            img.src = "https://via.placeholder.com/100";
+
+            db.collection('users').doc(uid).get().then(doc => {
+                if(doc.exists) {
+                    const data = doc.data();
+                    name.textContent = (data.name || 'PLAYER').toUpperCase();
+                    xp.textContent = data.xp || 0;
+                    if(data.photoBase64) img.src = data.photoBase64;
+                } else {
+                    name.textContent = "UNKNOWN PLAYER";
+                }
+            });
+        }
+
+        function closePlayerProfile() {
+            const modal = document.getElementById('player-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         }
 
     </script>
