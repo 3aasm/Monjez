@@ -203,6 +203,17 @@
             background-size: 100% 4px;
         }
 
+        /* Rank Colors */
+        .text-bronze { color: #cd7f32; text-shadow: 1px 1px 0 #000; }
+        .text-silver { color: #c0c0c0; text-shadow: 1px 1px 0 #000; }
+        .text-gold { color: #ffd700; text-shadow: 1px 1px 0 #000; }
+
+        /* Logout Animation */
+        .boot-down { animation: bootDown 1.5s cubic-bezier(0.7, 0, 0.3, 1) forwards; }
+        @keyframes bootDown { 
+            0% { transform: translateY(-100%); } 100% { transform: translateY(0); }
+        }
+
         .rendering-pixelated {
             image-rendering: pixelated;
         }
@@ -278,6 +289,13 @@
                     <div class="flex justify-between text-[10px] font-pixel text-white px-1">
                         <span id="pending-count">0 <span data-i18n="active">ACTIVE</span></span>
                         <span id="xp-text">0/100 XP</span>
+                    </div>
+                    <!-- Rank Status -->
+                    <div class="mt-2 pt-2 border-t-2 border-black/20 flex justify-center items-center gap-2 text-[10px] font-pixel">
+                        <span class="text-gray-400" data-i18n="rank_status">STATUS:</span>
+                        <span id="rank-status-text" class="font-bold text-white">---</span>
+                        <span class="text-gray-500">|</span>
+                        <span class="text-gray-400">#</span><span id="rank-num" class="text-white">--</span>
                     </div>
                 </div>
 
@@ -527,9 +545,39 @@
                         </div>
                         <input type="file" id="update-photo" class="hidden" accept="image/*" onchange="updateProfilePhoto(this)">
                         
-                        <div class="text-center">
-                            <h3 class="text-xl font-bold text-bit-accent" id="profile-name-lg">PLAYER</h3>
+                        <div class="text-center relative">
+                            <h3 class="text-xl font-bold text-bit-accent flex items-center justify-center gap-2">
+                                <span id="profile-name-lg">PLAYER</span>
+                                <button onclick="editProfileName()" class="text-xs text-gray-400 hover:text-white"><i class="fas fa-pen"></i></button>
+                            </h3>
                             <p class="text-xs text-gray-500 font-pixel" id="profile-email-lg">EMAIL</p>
+                        </div>
+
+                        <!-- Account Actions -->
+                        <div class="w-full flex flex-col gap-2 mt-2">
+                            <button onclick="showChangePassword()" class="pixel-btn yellow w-full py-2 text-xs" data-i18n="change_pass">CHANGE PASSWORD</button>
+                            <button onclick="showDeleteAccount()" class="pixel-btn red w-full py-2 text-xs" data-i18n="delete_acc">DELETE ACCOUNT</button>
+                        </div>
+
+                        <!-- Action Forms (Hidden) -->
+                        <div id="action-form-pass" class="hidden w-full flex-col gap-2 bg-black p-2 border-2 border-gray-600">
+                            <p class="text-xs text-center text-yellow-400 mb-1" data-i18n="change_pass">CHANGE PASSWORD</p>
+                            <input type="password" id="cp-current" placeholder="CURRENT PASS" class="pixel-input text-xs w-full" data-i18n="curr_pass">
+                            <input type="password" id="cp-new" placeholder="NEW PASS" class="pixel-input text-xs w-full" data-i18n="new_pass">
+                            <input type="password" id="cp-confirm" placeholder="CONFIRM PASS" class="pixel-input text-xs w-full" data-i18n="conf_pass">
+                            <div class="flex gap-2">
+                                <button onclick="confirmChangePassword()" class="pixel-btn green flex-1 py-1 text-xs">OK</button>
+                                <button onclick="hideActionForms()" class="pixel-btn grey flex-1 py-1 text-xs">X</button>
+                            </div>
+                        </div>
+
+                        <div id="action-form-del" class="hidden w-full flex-col gap-2 bg-black p-2 border-2 border-red-600">
+                            <p class="text-xs text-center text-red-500 mb-1 font-bold" data-i18n="delete_acc_confirm">DELETE ACCOUNT?</p>
+                            <input type="password" id="del-pass" placeholder="PASSWORD" class="pixel-input text-xs w-full" data-i18n="pass_ph">
+                            <div class="flex gap-2">
+                                <button onclick="confirmDeleteAccount()" class="pixel-btn red flex-1 py-1 text-xs">DELETE</button>
+                                <button onclick="hideActionForms()" class="pixel-btn grey flex-1 py-1 text-xs">CANCEL</button>
+                            </div>
                         </div>
                         
                         <!-- Profile Country Selector -->
@@ -677,8 +725,8 @@
                 new_item: "عنصر جديد +",
                 bag_empty: "الحقيبة فارغة",
                 quests: "المهام",
-                battle: "المعركة",
-                items: "أدوات",
+                battle: "التوقيت",
+                items: "المفكرة",
                 player_card: "بطاقة اللاعب",
                 logout: "خروج (تسجيل خروج)",
                 save: "حفظ",
@@ -701,10 +749,10 @@
                 custom: "تخصيص",
                 reset_again: "اعد مره اخرا",
                 select_country: "اختر الدولة:",
-                leaderboard: "أفضل اللاعبين",
+                leaderboard: "أفضل المستخدمين",
                 rank: "الترتيب",
                 score: "المستوى / XP",
-                no_players: "لا يوجد لاعبين بعد",
+                no_players: "لا يوجد رسائل",
                 chat: "الدردشة",
                 global_chat: "الدردشة العالمية",
                 say_something: "قل شيئاً...",
@@ -715,7 +763,17 @@
                 sound_off: "الصوت: معطل",
                 chat_deleted: "تم حذف الدردشة",
                 delete_confirm: "هل أنت متأكد من الحذف؟",
-                edit: "تعديل"
+                edit: "تعديل",
+                change_pass: "تغيير كلمة المرور",
+                delete_acc: "حذف الحساب",
+                curr_pass: "كلمة المرور الحالية",
+                new_pass: "كلمة المرور الجديدة",
+                conf_pass: "تأكيد كلمة المرور",
+                delete_acc_confirm: "حذف الحساب نهائياً؟",
+                edit_name_cost: "تعديل الاسم يكلف 300 XP. موافق؟",
+                no_xp: "لا يوجد XP كافي!",
+                rank_status: "الحالة:",
+                logging_out: "جاري تسجيل الخروج..."
             },
             en: {
                 history: "HISTORY",
@@ -772,7 +830,17 @@
                 sound_off: "SOUND: OFF",
                 chat_deleted: "Chat deleted",
                 delete_confirm: "Delete message?",
-                edit: "EDIT"
+                edit: "EDIT",
+                change_pass: "CHANGE PASSWORD",
+                delete_acc: "DELETE ACCOUNT",
+                curr_pass: "CURRENT PASS",
+                new_pass: "NEW PASS",
+                conf_pass: "CONFIRM PASS",
+                delete_acc_confirm: "DELETE ACCOUNT PERMANENTLY?",
+                edit_name_cost: "Rename costs 300 XP. Proceed?",
+                no_xp: "Not enough XP!",
+                rank_status: "STATUS:",
+                logging_out: "LOGGING OUT..."
             }
         };
 
@@ -865,6 +933,20 @@
             high: { border: 'border-red-500', icon: 'text-red-500' }
         };
 
+        // --- RANK SYSTEM ---
+        function getRankColorClass(xp) {
+            if (xp >= 5000) return 'text-gold';
+            if (xp >= 2000) return 'text-silver';
+            return 'text-bronze';
+        }
+
+        function getRankTitle(xp) {
+            if (xp >= 5000) return currentLang === 'ar' ? 'عالي (ذهبي)' : 'HIGH (GOLD)';
+            if (xp >= 2000) return currentLang === 'ar' ? 'متوسط (فضي)' : 'MEDIUM (SILVER)';
+            if (xp >= 500) return currentLang === 'ar' ? 'ضعيف (برونزي)' : 'WEAK (BRONZE)';
+            return currentLang === 'ar' ? 'تحت الضعيف' : 'BEGINNER';
+        }
+
         // --- COUNTRIES ---
         const countries = [
             { code: 'sa', flag: '🇸🇦' },
@@ -907,6 +989,7 @@
             if(u) {
                 avatar.src = u.photoURL || 'https://via.placeholder.com/100';
                 name.textContent = (u.displayName || 'PLAYER').toUpperCase();
+                name.className = `text-lg font-display leading-none mb-1 truncate max-w-[120px] flex items-center gap-2 ${getRankColorClass(state.xp)}`;
                 
                 // Modal Content
                 loginFields.classList.add('hidden');
@@ -915,6 +998,7 @@
                 title.textContent = translations[currentLang].player_card;
                 
                 document.getElementById('profile-name-lg').textContent = u.displayName;
+                document.getElementById('profile-name-lg').className = `text-xl font-bold ${getRankColorClass(state.xp)}`;
                 document.getElementById('profile-img-lg').src = u.photoURL || 'https://via.placeholder.com/100';
                 document.getElementById('profile-email-lg').textContent = u.email;
 
@@ -936,6 +1020,7 @@
                         db.collection('users').doc(u.uid).set({ name: u.displayName }, { merge: true });
                     }
                     renderProfileCountryOptions(currentCountry);
+                    updatePlayerRank();
                 });
                 updateSoundButton();
             } else {
@@ -1064,11 +1149,23 @@
         }
 
         function handleLogout() {
-            if(confirm("ARE YOU SURE YOU WANT TO QUIT?")) {
-                auth.signOut();
-                localStorage.clear();
-                location.reload();
-            }
+            // Logout Animation
+            const bootScreen = document.getElementById('boot-screen');
+            const bootTitle = document.getElementById('boot-title');
+            const bootSub = document.getElementById('boot-sub');
+            
+            bootScreen.classList.remove('boot-finish');
+            bootScreen.classList.add('boot-down');
+            bootTitle.textContent = "SYSTEM SHUTDOWN";
+            bootSub.textContent = translations[currentLang].logging_out;
+            
+            playSfx('hit');
+
+            setTimeout(() => {
+                auth.signOut().then(() => {
+                    location.reload();
+                });
+            }, 1500);
         }
 
         function updateProfilePhoto(input) {
@@ -1114,6 +1211,7 @@
                     renderQuests();
                     renderInventory();
                     updateXPUI();
+                    updateUIForUser(); // Refresh colors
                 } else {
                     saveData(); // Sync local to cloud for new users
                 }
@@ -1262,6 +1360,7 @@
             document.getElementById('xp-display').textContent = state.xp;
             document.getElementById('xp-text').textContent = `${progress}/100 XP`;
             document.getElementById('xp-bar').style.width = `${progress}%`;
+            updateUIForUser(); // Update colors
         }
 
         // --- TIMER (BATTLE) LOGIC ---
@@ -1561,6 +1660,7 @@
                 snapshot.forEach(doc => {
                     const d = doc.data();
                     const isMe = state.user && doc.id === state.user.uid;
+                    const rankColor = getRankColorClass(d.xp || 0);
                     const c = countries.find(x => x.code === d.country) || { flag: '🌍' };
                     const level = Math.floor((d.xp || 0) / 100) + 1;
                     const playerName = d.name || (d.email ? d.email.split('@')[0] : 'PLAYER');
@@ -1594,7 +1694,7 @@
                             <div class="w-6 h-6 border-2 ${borderClass} bg-black flex items-center justify-center font-pixel text-xs ${textClass}">${rank}</div>
                         </div>
                         <div class="text-xl">${c.flag}</div>
-                        <div class="flex-grow font-sans text-sm text-white truncate">${playerName}</div>
+                        <div class="flex-grow font-sans text-sm truncate ${rankColor}">${playerName}</div>
                         <div class="text-right font-pixel text-bit-accent text-xs">
                             <div>LVL ${level}</div>
                             <div class="text-gray-500">${d.xp || 0} XP</div>
@@ -1738,6 +1838,7 @@
                     const isMe = state.user && msg.uid === state.user.uid;
                     const c = countries.find(x => x.code === msg.country) || { flag: '🌍' };
                     const photoSrc = msg.photo || 'https://via.placeholder.com/100';
+                    const nameColor = msg.xp ? getRankColorClass(msg.xp) : (isMe ? 'text-bit-success' : 'text-bit-accent');
                     const isDeleted = msg.deleted;
                     
                     div.className = `flex flex-col gap-1 mb-2 ${isMe ? 'items-end' : 'items-start'}`;
@@ -1842,6 +1943,7 @@
                     name: name,
                     country: country,
                     photo: photo,
+                    xp: state.xp,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
@@ -2006,6 +2108,7 @@
                     name: name,
                     country: country,
                     photo: photo,
+                    xp: state.xp,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 playSfx('coin');
@@ -2033,6 +2136,7 @@
                 if(doc.exists) {
                     const data = doc.data();
                     name.textContent = (data.name || 'PLAYER').toUpperCase();
+                    name.className = `text-2xl font-display mb-2 truncate ${getRankColorClass(data.xp || 0)}`;
                     xp.textContent = data.xp || 0;
                     if(data.photoBase64) img.src = data.photoBase64;
                 } else {
@@ -2045,6 +2149,93 @@
             const modal = document.getElementById('player-modal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+        }
+
+        // --- PROFILE ACTIONS ---
+        function editProfileName() {
+            if(state.xp < 300) return alert(translations[currentLang].no_xp);
+            if(!confirm(translations[currentLang].edit_name_cost)) return;
+            
+            const newName = prompt(translations[currentLang].name_ph);
+            if(newName && newName.trim()) {
+                addXP(-300);
+                state.user.updateProfile({ displayName: newName.trim() }).then(() => {
+                    db.collection('users').doc(state.user.uid).set({ name: newName.trim() }, { merge: true });
+                    updateUIForUser();
+                    playSfx('coin');
+                });
+            }
+        }
+
+        function showChangePassword() {
+            hideActionForms();
+            document.getElementById('action-form-pass').classList.remove('hidden');
+            document.getElementById('action-form-pass').classList.add('flex');
+        }
+
+        function showDeleteAccount() {
+            hideActionForms();
+            document.getElementById('action-form-del').classList.remove('hidden');
+            document.getElementById('action-form-del').classList.add('flex');
+        }
+
+        function hideActionForms() {
+            document.getElementById('action-form-pass').classList.add('hidden');
+            document.getElementById('action-form-pass').classList.remove('flex');
+            document.getElementById('action-form-del').classList.add('hidden');
+            document.getElementById('action-form-del').classList.remove('flex');
+            document.getElementById('cp-current').value = '';
+            document.getElementById('cp-new').value = '';
+            document.getElementById('cp-confirm').value = '';
+            document.getElementById('del-pass').value = '';
+        }
+
+        function confirmChangePassword() {
+            const curr = document.getElementById('cp-current').value;
+            const newP = document.getElementById('cp-new').value;
+            const confP = document.getElementById('cp-confirm').value;
+
+            if(!curr || !newP) return alert("FILL ALL FIELDS");
+            if(newP !== confP) return alert("PASSWORDS DO NOT MATCH");
+
+            const cred = firebase.auth.EmailAuthProvider.credential(state.user.email, curr);
+            state.user.reauthenticateWithCredential(cred).then(() => {
+                state.user.updatePassword(newP).then(() => {
+                    alert("PASSWORD UPDATED");
+                    hideActionForms();
+                    playSfx('win');
+                }).catch(e => alert(e.message));
+            }).catch(e => alert("WRONG CURRENT PASSWORD"));
+        }
+
+        function confirmDeleteAccount() {
+            const pass = document.getElementById('del-pass').value;
+            if(!pass) return alert("PASSWORD REQUIRED");
+
+            const cred = firebase.auth.EmailAuthProvider.credential(state.user.email, pass);
+            state.user.reauthenticateWithCredential(cred).then(() => {
+                if(confirm("FINAL WARNING: DELETE ACCOUNT?")) {
+                    db.collection('users').doc(state.user.uid).delete();
+                    state.user.delete().then(() => {
+                        alert("ACCOUNT DELETED");
+                        location.reload();
+                    });
+                }
+            }).catch(e => alert("WRONG PASSWORD"));
+        }
+
+        function updatePlayerRank() {
+            if(!state.user) return;
+            
+            // Update Status Text
+            document.getElementById('rank-status-text').textContent = getRankTitle(state.xp);
+            document.getElementById('rank-status-text').className = `font-bold ${getRankColorClass(state.xp)}`;
+
+            // Fetch Rank Number
+            db.collection('users').where('xp', '>', state.xp).get().then(snap => {
+                const rank = snap.size + 1;
+                document.getElementById('rank-num').textContent = rank;
+            });
         }
 
     </script>
